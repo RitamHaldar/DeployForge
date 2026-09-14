@@ -1,53 +1,78 @@
-import { coreV1Api } from "./kubernetes.js"; 
+import { coreV1Api } from "./kubernetes.js";
 
 
-export async function createPod(id:string){
+export async function createPod(id: string) {
     const pod = {
-        "metadata":{
-            "name":`kubeheal-${id}`},
-        "spec":{
-            "containers":[
+        "metadata": {
+            "name": `kubeheal-${id}`
+        },
+        "spec": {
+            "containers": [
                 {
-                    "name":"template",
-                    "image":"template-:latest",
-                    "imagePullPolicy":"IfNotPresent",
-                    "resources":{
-                        "limits":{
-                            "memory":"128Mi",
-                            "cpu":"256m"
+                    "name": "template",
+                    "image": "template-:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "resources": {
+                        "limits": {
+                            "memory": "128Mi",
+                            "cpu": "256m"
                         },
-                        "requests":{
-                            "memory":"64Mi",
-                            "cpu":"128m"
+                        "requests": {
+                            "memory": "64Mi",
+                            "cpu": "128m"
                         }
                     }
-                
+
 
                 }
             ]
         }
     }
     const res = await coreV1Api.createNamespacedPod({
-        namespace:"default",
-        body:pod
+        namespace: "default",
+        body: pod
     })
     return res;
 }
 
-export async function getPod(){
-    try{
-        const res = await coreV1Api.listNode();
+export async function getPod():Promise<object> {
+    try {
+        const res = await coreV1Api.listPodForAllNamespaces();
+
         const items = (res as any)?.items ?? (res as any)?.body?.items ?? [];
-        const nodes = items.map((node: any) => ({
-        name: node.metadata?.name,
-        status: node.status?.conditions?.slice(-1)[0]?.type ?? 'Unknown',
-        roles: Object.keys(node.metadata?.labels || {})
-            .filter(l => l.startsWith('node-role.kubernetes.io/'))
-            .map(l => l.replace('node-role.kubernetes.io/', ''))
-        }));
-        return nodes;
-    }catch(err){
-        console.log(" error in listing nodes ",err);
-        return {msg:"error in listing nodes",err:err};
+
+        const systemNamespaces = new Set([
+            'kube-system',
+            'kube-public',
+            'kube-node-lease',
+            'ingress-nginx',
+        ]);
+
+        const pods = items
+            .filter((pod: any) => !systemNamespaces.has(pod.metadata?.namespace))
+            .map((pod: any) => ({
+                name: pod.metadata?.name,
+                namespace: pod.metadata?.namespace,
+                status: pod.status?.phase ?? 'Unknown',
+            }));
+
+        return pods;
+    } catch (err) {
+        return { msg: "error in listing nodes", err: err };
+    }
+}
+
+export async function GetLogs(pod:string):Promise<object> {
+    try {
+        const response = await coreV1Api.readNamespacedPodLog({
+            name: pod,
+            namespace: 'default',
+            tailLines: 100
+        });
+
+        return {response};
+    }
+    catch (err) {
+        return { msg: "error in getting logs", err: err }
     }
 }

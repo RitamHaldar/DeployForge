@@ -4,6 +4,7 @@ import { Iresponse } from "../types/response.types.js";
 import { config } from "../config/cofig.js";
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import jwt from "jsonwebtoken";
+import axios from "axios";
 
 /**
  * @param req - Express Request with registration payload in `req.body`
@@ -235,5 +236,30 @@ export async function GoogleAuth(req: Request, res: Response) {
             message: "Error during Google authentication",
             error: { error: e.message },
         });
+    }
+}
+
+export async function GitLogin(req: Request, res: Response) {
+    const code = req.query.code as string;
+    if (!code) return res.status(400).json({ error: 'Authorization code missing' });
+
+    try {
+        const tokenResponse = await axios.post(
+            'https://github.com/login/oauth/access_token',
+            {
+                client_id: config.CLIENT_ID,
+                client_secret: config.CLIENT_SECRET,
+                code,
+            },
+            {
+                headers: { Accept: 'application/json' },
+            }
+        );
+
+        const accessToken = tokenResponse.data.access_token;
+        console.log(accessToken);
+        res.json({ accessToken });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to exchange token' });
     }
 }

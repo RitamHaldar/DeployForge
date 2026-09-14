@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx -L nodemon server.js",
+    "dev": "tsx watch server.ts",
     "start": "tsx server.ts"
   },
   "keywords": [],
@@ -13,18 +13,20 @@
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/mongoose": "^5.11.96",
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.5.1",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@types/cookie-parser": "^1.4.10",
+    "@octokit/rest": "^22.0.1",
     "@types/jsonwebtoken": "^9.0.10",
+    "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -34,6 +36,7 @@
     "mongoose": "^9.9.5",
     "morgan": "^1.12.0",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "simple-git": "^3.36.0"
   }
 }

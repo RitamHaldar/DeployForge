@@ -1,13 +1,14 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import {
     GetUser,
     Login,
     Register,
     GoogleAuth,
+    GitLogin,
 } from "../controller/auth.controller.js";
 import { verifyuser } from "../middleware/auth.middleware.js";
 import passport from "passport";
-
+import { config } from "../config/cofig.js"
 export const authRoute = Router();
 
 /**
@@ -54,3 +55,10 @@ authRoute.get(
     }),
     GoogleAuth
 );
+
+authRoute.get('/github', (req: Request, res: Response) => {
+    const redirectUri = `https://github.com/login/oauth/authorize?client_id=${config.CLIENT_ID}&scope=repo,read:user`;
+    res.redirect(redirectUri);
+});
+
+authRoute.get("/github/callback",GitLogin);

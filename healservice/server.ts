@@ -6,10 +6,28 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`[KubeHeal Controller] Running on http://localhost:${PORT}`);
   try {
-    const response = await coreV1Api.listNode();
+    const response = await coreV1Api.listPodForAllNamespaces();
+
     const items = (response as any)?.items ?? (response as any)?.body?.items ?? [];
-    console.log(`[KubeHeal Controller] Connected to Kubernetes. Detected ${items.length} nodes:`);
-    items.forEach((n: any) => console.log(`  • ${n.metadata?.name}`));
+
+    const systemNamespaces = new Set([
+      'kube-system',
+      'kube-public',
+      'kube-node-lease',
+      'ingress-nginx',
+    ]);
+
+    const pods = items.filter(
+      (pod: any) => !systemNamespaces.has(pod.metadata?.namespace)
+    );
+
+    console.log(
+      `[KubeHeal Controller] Connected to Kubernetes. Detected ${pods.length} application pods:`
+    );
+
+    pods.forEach((pod: any) =>
+      console.log(`  • ${pod.metadata?.namespace}/${pod.metadata?.name}`)
+    );
   } catch (err: any) {
     console.error('[KubeHeal Controller] Failed to query Kubernetes API:', err.message);
   }
