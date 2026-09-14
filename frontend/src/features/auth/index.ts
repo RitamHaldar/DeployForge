@@ -1,0 +1,12 @@
+export { AuthPage } from './pages/AuthPage';
+export { AuthCard } from './components/AuthCard';
+export { AuthInput } from './components/AuthInput';
+export { OAuthButtons } from './components/OAuthButtons';
+export { PasswordStrengthBar } from './components/PasswordStrengthBar';
+export { AuthHeader } from './components/AuthHeader';
+export { AuthFooter } from './components/AuthFooter';
+export { AmbientParticleCanvas } from './components/AmbientParticleCanvas';
+export { useAuthForm } from './hooks/useAuthForm';
+export { useOAuth } from './hooks/useOAuth';
+export { authApi } from './services/authApi';
+export * from './types';
