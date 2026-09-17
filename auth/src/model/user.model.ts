@@ -22,13 +22,13 @@ const userschema = new mongoose.Schema<UserSchema>({
         Number: {
             type: String,
             required: function (this: any): boolean {
-                return !this.Gid;
+                return !this.Oauthid;
             },
         },
         CountryCode: {
             type: String,
             required: function (this: any): boolean {
-                return !this.Gid;
+                return !this.Oauthid;
             },
             enum: ["+91", "+1", "+20", "+44", "+971", "+966", "+212"],
         },
@@ -38,14 +38,18 @@ const userschema = new mongoose.Schema<UserSchema>({
         required: true,
         unique: true,
     },
-    Gid: {
+    Oauthid: {
         type: String,
         default: null,
+    },
+    GitHubAccessToken: {
+        type: String,
+        default: null
     },
     Password: {
         type: String,
         required: function (this: any): boolean {
-            return !this.Gid;
+            return !this.Oauthid;
         },
         minlength: [6, "Min 6 characters required"],
     },

@@ -1,6 +1,8 @@
 # 🔐 DeployForge Auth Service
 
-The **DeployForge Auth Service** is a dedicated authentication and user identity microservice built with **Node.js**, **Express**, **TypeScript**, and **MongoDB (Mongoose)**. It provides secure credential-based authentication, Google OAuth 2.0 single sign-on (SSO), JWT token generation, secure HTTP-only cookie session handling, and user profile management.
+The **DeployForge Auth Service** is the authentication and identity management microservice for the DeployForge platform, built with **Node.js**, **Express 5**, **TypeScript**, and **MongoDB (Mongoose)**.
+
+It provides credential-based registration and login, Google OAuth 2.0 and GitHub OAuth authentication, JWT issuance, HTTP-only secure cookie session handling, and authenticated profile retrieval.
 
 ---
 
@@ -12,13 +14,12 @@ The **DeployForge Auth Service** is a dedicated authentication and user identity
 - [Prerequisites](#-prerequisites)
 - [Environment Variables](#-environment-variables)
 - [Installation & Local Setup](#-installation--local-setup)
-- [Running with Docker](#-running-with-docker)
 - [API Reference & Endpoints](#-api-reference--endpoints)
   - [1. User Registration](#1-user-registration)
   - [2. User Login](#2-user-login)
   - [3. Get User Profile](#3-get-user-profile)
-  - [4. Google OAuth Login](#4-google-oauth-login)
-  - [5. Google OAuth Callback](#5-google-oauth-callback)
+  - [4. Google OAuth Flow](#4-google-oauth-flow)
+  - [5. GitHub OAuth Flow](#5-github-oauth-flow)
 - [Database Schema](#-database-schema)
 - [Security Features](#-security-features)
 - [Available Scripts](#-available-scripts)
@@ -27,14 +28,15 @@ The **DeployForge Auth Service** is a dedicated authentication and user identity
 
 ## ✨ Features
 
-- **Standard Authentication**: User registration and login using email/username and password.
-- **Google OAuth 2.0**: Seamless Social Login via Google Single Sign-On (SSO) with Passport.js.
-- **Bcrypt Password Hashing**: Automatic pre-save password hashing with salt rounds.
-- **JWT Authentication**: JSON Web Token signing (1-day expiration) for stateless authentication.
-- **Secure Cookie Management**: Issues HTTP-only, SameSite cookies to protect against XSS and CSRF attacks.
-- **Protected Routes Middleware**: `verifyuser` middleware for decoding JWTs and attaching user contexts to requests.
-- **Type Safety**: Fully typed with TypeScript interfaces for requests, responses, models, and configs.
-- **Containerized**: Production-ready `Dockerfile` and `.dockerignore` for Docker and Kubernetes deployments.
+- **Multi-Provider Authentication**:
+  - **Local Credentials**: Email/username and password registration and login with bcrypt hashing.
+  - **Google OAuth 2.0**: Single Sign-On (SSO) via Passport.js (`passport-google-oauth20`).
+  - **GitHub OAuth**: Direct OAuth 2.0 authorization code exchange, GitHub user profile fetching, primary verified email resolution, and `GitHubAccessToken` storage for downstream services.
+- **Unified Identity Management**: Links Google and GitHub identities via a consolidated `Oauthid` field while preserving standard user account options.
+- **Stateless JWT Sessions**: Signs JSON Web Tokens (1-day expiration) containing user ID, email, and username.
+- **Secure Cookie Transport**: Stores the authentication token in `httpOnly`, `sameSite: strict`, and SSL-secured (in production) cookies.
+- **Strict TypeScript Integration**: Global declaration merging on `Express.User` ensuring end-to-end type safety for `req.user` across all middlewares and controllers.
+- **CORS & Middleware**: Configured to work seamlessly with frontend clients (e.g., Vite/React on port 5173).
 
 ---
 
@@ -42,48 +44,30 @@ The **DeployForge Auth Service** is a dedicated authentication and user identity
 
 ```text
 auth/
-├── .dockerignore                 # Specifies files excluded from Docker build context
-├── .env.example                  # Template for required environment variables
-├── .gitignore                    # Git ignore rules (node_modules, .env, build output)
-├── dockerfile                    # Container definition for building the Auth service image
-├── package.json                  # NPM package configuration, scripts, and dependencies
-├── package-lock.json             # NPM dependency lockfile
-├── server.ts                     # Application entry point (DB connection & HTTP server listener)
+├── .dockerignore                 # Excluded files for container builds
+├── .env                          # Local environment variables (do not commit)
+├── .gitignore                    # Git ignored patterns
+├── dockerfile                    # Containerization configuration
+├── package.json                  # Dependencies and execution scripts
+├── server.ts                     # Service entry point & DB connection initialization
 └── src/
-    ├── app.ts                    # Express application setup, global middlewares, and route mounting
+    ├── app.ts                    # Express application configuration and route mounting
     ├── config/
-    │   ├── cofig.ts              # Centralized environment variable loader and config export
-    │   ├── db.ts                 # Mongoose MongoDB database connection logic
+    │   ├── cofig.ts              # Centralized environment variable loader
+    │   ├── db.ts                 # Mongoose MongoDB connection handler
     │   └── passport.ts           # Google OAuth 2.0 Passport strategy configuration
     ├── controller/
-    │   └── auth.controller.ts    # Business logic for register, login, get-user, and Google OAuth
+    │   └── auth.controller.ts    # Handlers for Register, Login, GetUser, GoogleAuth, GitLogin
     ├── middleware/
-    │   └── auth.middleware.ts    # JWT token verification middleware for protected routes
+    │   └── auth.middleware.ts    # JWT verification middleware & Express.User type augmentation
     ├── model/
-    │   └── user.model.ts         # Mongoose User schema, pre-save hook, and comparepass method
+    │   └── user.model.ts         # User Mongoose schema, password hashing hooks, comparepass method
     ├── routes/
-    │   └── auth.routes.ts        # Express router defining authentication endpoints
+    │   └── auth.routes.ts        # Express router mapping API endpoints
     └── types/
-        ├── response.types.ts     # Interface definition for standardized API JSON responses
-        └── user.types.ts         # Interface definition for User data structures
+        ├── response.types.ts     # Standardized JSON response envelope
+        └── user.types.ts         # User interface & data contracts
 ```
-
-### Detailed File & Directory Guide
-
-| Path | Purpose |
-| :--- | :--- |
-| `server.ts` | Initializes database connection via `connecttodb()` and binds Express to the designated port. |
-| `src/app.ts` | Configures Express, JSON body parser, cookie parser, CORS policies, Passport, and mounts `authRoute`. |
-| `src/config/cofig.ts` | Loads `.env` variables and exports a structured configuration object (`JWT_SECRET`, `MONGO_URI`, `clientID`, `clientSecret`). |
-| `src/config/db.ts` | Manages MongoDB connection life cycle using Mongoose. |
-| `src/config/passport.ts` | Configures `passport-google-oauth20` strategy with client IDs, secrets, and callback URL. |
-| `src/controller/auth.controller.ts` | Implements handler methods: `Register`, `Login`, `GetUser`, and `GoogleAuth`. |
-| `src/middleware/auth.middleware.ts` | Intercepts protected requests to validate the `token` cookie and populate `req.user`. |
-| `src/model/user.model.ts` | Mongoose schema with schema validations, conditional required fields for OAuth, pre-save hashing hook, and `comparepass()` method. |
-| `src/routes/auth.routes.ts` | Maps HTTP verbs and paths to their respective controller actions and middleware. |
-| `src/types/response.types.ts` | Defines `Iresponse` standard response envelope (`success`, `message`, `body`, `error`). |
-| `src/types/user.types.ts` | Defines `IUsers` interface representing user properties. |
-| `dockerfile` | Multi-stage / Alpine Docker build definition for local and cloud containerization. |
 
 ---
 
@@ -93,46 +77,46 @@ auth/
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Framework**: [Express.js](https://expressjs.com/) (v5)
 - **Database**: [MongoDB](https://www.mongodb.com/) via [Mongoose](https://mongoosejs.com/)
-- **Authentication**: [Passport.js](http://www.passportjs.org/) (`passport-google-oauth20`), [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken), [bcryptjs](https://github.com/dcodeIO/bcrypt.js)
-- **Utilities**: `cookie-parser`, `cors`, `dotenv`, `tsx` / `nodemon`
+- **Authentication**:
+  - [Passport.js](http://www.passportjs.org/) & `passport-google-oauth20`
+  - GitHub OAuth via [Axios](https://axios-http.com/)
+  - [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) (JWT)
+  - [bcryptjs](https://github.com/dcodeIO/bcrypt.js)
+- **Tooling**: `tsx` (TypeScript Execute / Watch), `cookie-parser`, `cors`, `dotenv`
 
 ---
 
 ## 📋 Prerequisites
 
-Before running the application, ensure you have the following installed:
-
 1. **Node.js** (v20.x or higher) & **npm** (v10+)
-2. **MongoDB** instance running locally (`mongodb://localhost:27017`) or a remote MongoDB Atlas URI.
-3. *(Optional for Google OAuth)* Google Cloud Console OAuth 2.0 Web Application credentials.
+2. **MongoDB** instance running locally or via MongoDB Atlas
+3. **Google Cloud Console OAuth 2.0** credentials (for Google SSO)
+4. **GitHub App / OAuth App** credentials (for GitHub login & repo access)
 
 ---
 
 ## ⚙️ Environment Variables
 
-Create a `.env` file in the root of the `auth` directory:
+Create or update `.env` in the root of the `auth` directory:
 
-```bash
-cp .env.example .env
-```
-
-Configure the following variables in `.env`:
-
-| Variable | Type | Description | Example |
-| :--- | :--- | :--- | :--- |
-| `PORT` | `number` | Port on which the auth service listens | `3000` |
-| `NODE_ENV` | `string` | Node environment (`development` / `production`) | `development` |
-| `MONGO_URI` | `string` | MongoDB connection connection string | `mongodb://localhost:27017/deployforge_auth` |
-| `JWT_SECRET` | `string` | Secret key for signing and verifying JWT tokens | `your_jwt_secret_key_here` |
-| `clientID` | `string` | Google OAuth 2.0 Client ID | `123456...apps.googleusercontent.com` |
-| `clientSecret` | `string` | Google OAuth 2.0 Client Secret | `GOCSPX-xxxxxxxxxxxx` |
-| `CLIENT_URL` | `string` | Frontend client URL for CORS & OAuth redirection | `http://localhost:5173` |
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `PORT` | HTTP port on which the auth service runs | `3000` |
+| `NODE_ENV` | Runtime environment (`development` / `production`) | `development` |
+| `MONGO_URI` | MongoDB connection string | `mongodb+srv://...` |
+| `JWT_TOKEN` | Secret key used for signing and verifying JWTs | `your_jwt_secret` |
+| `CLIENT_URL` | Frontend URL for CORS origin and post-login redirects | `http://localhost:5173` |
+| `GOOGLE_CLIENT_ID` | Google OAuth 2.0 Web Application Client ID | `xxx.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET`| Google OAuth 2.0 Client Secret | `GOCSPX-xxx` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth / GitHub App Client ID | `Iv23liw...` |
+| `GITHUB_CLIENT_SECRET`| GitHub OAuth / GitHub App Client Secret | `ed313...` |
+| `GITHUB_CALLBACK_URL` | GitHub OAuth callback URL | `http://localhost:3000/api/auth/github/callback` |
 
 ---
 
 ## 🚀 Installation & Local Setup
 
-1. **Navigate to the auth service directory**:
+1. **Navigate to the directory**:
    ```bash
    cd auth
    ```
@@ -142,151 +126,89 @@ Configure the following variables in `.env`:
    npm install
    ```
 
-3. **Configure Environment Variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your MongoDB URI and JWT secrets
-   ```
-
-4. **Run the development server**:
+3. **Start the development server with live reload**:
    ```bash
    npm run dev
    ```
 
-The service will start and listen on `http://localhost:3000`.
-
----
-
-## 🐳 Running with Docker
-
-1. **Build the Docker Image**:
+4. **Production launch**:
    ```bash
-   docker build -t deployforge-auth .
+   npm start
    ```
 
-2. **Run the Container**:
-   ```bash
-   docker run -d \
-     -p 3000:3000 \
-     --name deployforge-auth-container \
-     --env-file .env \
-     deployforge-auth
-   ```
-
-3. **View Container Logs**:
-   ```bash
-   docker logs -f deployforge-auth-container
-   ```
-
-4. **Stop the Container**:
-   ```bash
-   docker stop deployforge-auth-container
-   ```
+The service will start listening on `http://localhost:3000`.
 
 ---
 
 ## 📡 API Reference & Endpoints
 
-Base URL: `http://localhost:3000` (or `http://localhost:3000/api/auth`)
+All endpoints are mounted at `/api/auth` and `/` (e.g. `/api/auth/login` or `/login`).
 
 ### Summary of Routes
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `PATCH` | `/register` or `/api/auth/register` | Register a new user | No |
-| `GET` | `/login` or `/api/auth/login` | Authenticate user & get JWT token | No |
-| `GET` | `/get-user` or `/api/auth/get-user` | Retrieve authenticated user profile | Yes (JWT Cookie) |
-| `GET` | `/google` or `/api/auth/google` | Trigger Google OAuth 2.0 flow | No |
-| `GET` | `/google/callback` or `/api/auth/google/callback` | Google OAuth 2.0 Callback handler | No |
+| `PATCH` | `/api/auth/register` | Register new user with username, email, password | No |
+| `GET` | `/api/auth/login` | Authenticate with credentials, return JWT & set cookie | No |
+| `GET` | `/api/auth/get-user` | Retrieve profile of currently authenticated user | Yes (JWT Cookie) |
+| `GET` | `/api/auth/google` | Initiate Google OAuth 2.0 redirect | No |
+| `GET` | `/api/auth/google/callback` | Handle Google OAuth callback, issue JWT & redirect | No |
+| `GET` | `/api/auth/github` | Initiate GitHub OAuth authorization redirect | No |
+| `GET` | `/api/auth/github/callback` | Exchange code, fetch user & email, save token, redirect | No |
 
 ---
 
 ### 1. User Registration
-
-Creates a new user account with hashed password.
-
-- **URL**: `/register`
+- **URL**: `/api/auth/register`
 - **Method**: `PATCH`
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
+- **Body**:
   ```json
   {
-    "username": "johndoe",
-    "email": "johndoe@example.com",
-    "password": "SecretPassword123",
+    "username": "developer",
+    "email": "dev@deployforge.io",
+    "password": "StrongPassword123",
     "mobile": {
       "Number": "9876543210",
       "CountryCode": "+91"
     }
   }
   ```
-- **Success Response (`201 Created`)**:
+- **Response (`201 Created`)**:
   ```json
   {
     "success": true,
     "message": "User Registered Successfully",
     "body": {
-      "name": "johndoe",
-      "email": "johndoe@example.com"
+      "name": "developer",
+      "email": "dev@deployforge.io"
     }
   }
   ```
-- **Error Responses**:
-  - `400 Bad Request`: Missing credentials or user already exists.
-  - `500 Internal Server Error`: Server error during registration.
 
 ---
 
 ### 2. User Login
-
-Authenticates user credentials, sets HTTP-only `token` cookie, and returns a JWT.
-
-- **URL**: `/login`
+- **URL**: `/api/auth/login`
 - **Method**: `GET`
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
+- **Body**:
   ```json
   {
-    "email": "johndoe@example.com",
-    "password": "SecretPassword123"
+    "email": "dev@deployforge.io",
+    "password": "StrongPassword123"
   }
   ```
-  *(Or provide `"username": "johndoe"` in place of `"email"`)*
-- **Success Response (`200 OK`)**:
-  - **Set-Cookie**: `token=<JWT_STRING>; HttpOnly; SameSite=Strict; Max-Age=86400`
-  ```json
-  {
-    "success": true,
-    "message": "Login successful",
-    "body": {
-      "user": {
-        "id": "66da5d87a9123f4c10a8b9e1",
-        "username": "johndoe",
-        "email": "johndoe@example.com",
-        "mobile": {
-          "Number": "9876543210",
-          "CountryCode": "+91"
-        }
-      },
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    }
-  }
-  ```
-- **Error Responses**:
-  - `400 Bad Request`: Email/Username or password missing.
-  - `401 Unauthorized`: Invalid password.
-  - `404 Not Found`: User does not exist.
+  *(Or provide `"username": "developer"` instead of `"email"`)*
+- **Response (`200 OK`)**:
+  - Sets `token` HTTP-only cookie (`Max-Age: 24h`, `SameSite: Strict`).
+  - Returns user profile and token.
 
 ---
 
 ### 3. Get User Profile
-
-Fetches the currently authenticated user's profile.
-
-- **URL**: `/get-user`
+- **URL**: `/api/auth/get-user`
 - **Method**: `GET`
-- **Headers / Cookies**: Requires `token` in HTTP cookies.
-- **Success Response (`200 OK`)**:
+- **Headers**: Cookie `token=<jwt>`
+- **Response (`200 OK`)**:
   ```json
   {
     "success": true,
@@ -294,90 +216,73 @@ Fetches the currently authenticated user's profile.
     "body": {
       "user": {
         "_id": "66da5d87a9123f4c10a8b9e1",
-        "Username": "johndoe",
-        "Email": "johndoe@example.com",
-        "Mobileno": {
-          "Number": "9876543210",
-          "CountryCode": "+91"
-        },
-        "isVerified": false,
-        "__v": 0
+        "Username": "developer",
+        "Email": "dev@deployforge.io",
+        "isVerified": true
       }
     }
   }
   ```
-- **Error Responses**:
-  - `400 Bad Request`: Token missing or invalid.
-  - `401 Unauthorized`: User not identified from token.
-  - `404 Not Found`: User not found in database.
 
 ---
 
-### 4. Google OAuth Login
-
-Initiates Google SSO consent screen.
-
-- **URL**: `/google`
-- **Method**: `GET`
-- **Behavior**: Redirects client to Google OAuth consent screen requesting `profile` and `email` scopes.
+### 4. Google OAuth Flow
+- **Initiate**: `GET /api/auth/google`
+  - Redirects to Google consent screen requesting `profile` and `email` scopes.
+- **Callback**: `GET /api/auth/google/callback`
+  - Upserts user with `Oauthid` matching Google profile ID.
+  - Sets JWT cookie and redirects to `CLIENT_URL`.
 
 ---
 
-### 5. Google OAuth Callback
-
-Google OAuth redirection callback.
-
-- **URL**: `/google/callback`
-- **Method**: `GET`
-- **Behavior**:
-  1. Validates Google response.
-  2. Finds or creates the user with `Gid` (Google ID) and marks `isVerified: true`.
-  3. Signs JWT and sets `token` HTTP-only cookie.
-  4. Redirects user to `CLIENT_URL` (default: `http://localhost:5173`).
+### 5. GitHub OAuth Flow
+- **Initiate**: `GET /api/auth/github`
+  - Redirects to GitHub authorization requesting `repo`, `read:user`, and `user:email` scopes.
+- **Callback**: `GET /api/auth/github/callback?code=<code>`
+  - Exchanges one-time code for GitHub `access_token`.
+  - Queries `https://api.github.com/user` and `https://api.github.com/user/emails` for verified primary email.
+  - Upserts user record with `Oauthid`, `GitHubAccessToken`, and verified status.
+  - Issues DeployForge JWT cookie and redirects to `CLIENT_URL`.
 
 ---
 
 ## 🗄 Database Schema
 
-The `users` collection is modeled with the following fields:
+The `users` collection model supports both credentialed and OAuth accounts:
 
 ```typescript
-{
-  Username: { type: String, required: true },
-  Mobileno: {
-    Number: { type: String, required: () => !this.Gid },
-    CountryCode: { 
-      type: String, 
-      required: () => !this.Gid,
-      enum: ["+91", "+1", "+20", "+44", "+971", "+966", "+212"]
-    }
-  },
-  Email: { type: String, required: true, unique: true },
-  Gid: { type: String, default: null },
-  Password: { type: String, required: () => !this.Gid, minlength: 6 },
-  isVerified: { type: Boolean, default: false }
+export interface IUsers {
+    Username: string;
+    Mobileno?: {
+        Number: string;
+        CountryCode: string;
+    };
+    Email: string;
+    Oauthid?: string;              // Stores Google ID or GitHub ID
+    GitHubAccessToken?: string;    // Used for GitHub repository operations
+    Password?: string;
+    isVerified: boolean;
 }
 ```
 
-### Schema Hooks & Methods
-
-- **`pre("save")`**: Checks if `Password` field is modified. If modified, hashes the password using `bcrypt.hashSync(password, 10)`.
-- **`comparepass(password)`**: Compares the plain text password with the hashed password using `bcrypt.compareSync`.
+- **Pre-save Hook**: Automatically hashes `Password` with `bcryptjs` (salt rounds: 10) if modified.
+- **Conditional Requirements**: Phone numbers and passwords are required for direct registrations, but optional for OAuth accounts (`!this.Oauthid`).
 
 ---
 
 ## 🔒 Security Features
 
-1. **Password Hashing**: Passwords are never stored in plain text; Bcrypt with 10 salt rounds is applied.
-2. **Exclusion of Password**: Controller methods exclude `Password` from query results (`.select("-Password")`).
-3. **HTTP-Only Cookies**: JWT tokens are issued with `httpOnly: true` and `sameSite: "strict"` to mitigate XSS and CSRF risks.
-4. **CORS Control**: Configured to only permit trusted origins defined in `CLIENT_URL`.
+1. **Bcrypt Password Hashing**: Passwords are never stored in plaintext.
+2. **Safe Querying**: Controllers explicitly exclude password hashes (`.select("-Password")`).
+3. **Protected Cookie Transport**: Tokens are stored in `httpOnly`, `sameSite: strict` cookies to prevent client-side JavaScript access and cross-site request forgery.
+4. **Single-Use OAuth Codes**: Validates incoming OAuth codes immediately and handles errors gracefully without leaking tokens.
+5. **CORS Restrictions**: Accepts incoming credentials exclusively from configured `CLIENT_URL`.
 
 ---
 
 ## 📜 Available Scripts
 
-| Command | Description |
-| :--- | :--- |
-| `npm run dev` | Starts server in development mode with nodemon/tsx. |
-| `npm test` | Runs test suite (if configured). |
+| Script | Command | Description |
+| :--- | :--- | :--- |
+| `dev` | `npm run dev` | Runs the server with `tsx watch` for hot reloading |
+| `start` | `npm start` | Runs the server directly with `tsx` |

@@ -57,7 +57,7 @@ authRoute.get(
 );
 
 authRoute.get('/github', (req: Request, res: Response) => {
-    const redirectUri = `https://github.com/login/oauth/authorize?client_id=${config.CLIENT_ID}&scope=repo,read:user`;
+    const redirectUri = `https://github.com/login/oauth/authorize?client_id=${config.CLIENT_ID}&scope=repo%20read:user%20user:email`;
     res.redirect(redirectUri);
 });
 

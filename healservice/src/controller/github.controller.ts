@@ -1,8 +1,16 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Octokit } from "@octokit/rest";
-export async function ListRepos (req: Request, res: Response){
-  const token="git-access-token"
+import { userModel } from '../models/user.model.js';
+import { AuthRequest } from '../middleware/user.middleware.js';
 
+export async function ListRepos (req: AuthRequest, res: Response){
+  const user = req.user;
+  if (!user || !user.id) {
+    return res.status(401).json({ error: 'Unauthorized: User not found in request' });
+  }
+
+  const dbUser = await userModel.findById(user.id);
+  const token = dbUser?.GitHubAccessToken;
   if (!token) return res.status(401).json({ error: 'Missing access token' });
 
   try {

@@ -14,7 +14,9 @@ export interface IUsers {
     Email: string;
 
     /** Google Identifier (UID) assigned when registered via Google OAuth */
-    Gid?: string;
+    Oauthid?: string;
+
+    GitHubAccessToken?:string;
 
     /** Bcrypt hashed password (optional for Google OAuth users, required for standard users) */
     Password?: string;

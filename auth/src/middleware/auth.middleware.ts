@@ -2,11 +2,23 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { Iresponse } from "../types/response.types.js";
 import { Request, Response, NextFunction } from "express";
 import { config } from "../config/cofig.js";
-export interface AuthRequest extends Request {
-    /** Decoded JWT token payload attached after successful verification */
-    user?: string | JwtPayload;
+export interface UserPayload extends JwtPayload {
+    id: string;
+    email?: string;
+    username?: string;
 }
 
+declare global {
+    namespace Express {
+        interface User {
+            id: string;
+            email?: string;
+            username?: string;
+        }
+    }
+}
+
+export type AuthRequest = Request;
 /**
  * Middleware function to verify JWT authentication token from incoming request cookies.
  *
@@ -33,7 +45,7 @@ export async function verifyuser(
 
     try {
         const data = jwt.verify(token, config.key);
-        req.user = data;
+        req.user = data as UserPayload;
         next();
     } catch (e) {
         return res.status(400).json({

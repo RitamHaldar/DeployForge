@@ -12,4 +12,6 @@ export const config = {
     CLIENT_ID:process.env.GITHUB_CLIENT_ID || "",
     
     CLIENT_SECRET:process.env.GITHUB_CLIENT_SECRET || "",
+
+    JWT:process.env.JWT_TOKEN || ""
 };

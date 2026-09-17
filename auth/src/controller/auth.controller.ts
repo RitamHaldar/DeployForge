@@ -96,7 +96,7 @@ export async function Login(req: Request, res: Response<Iresponse>) {
 
         const token = jwt.sign(
             { id: user._id, email: user.Email, username: user.Username },
-            config.key,
+            config.JWT,
             { expiresIn: "1d" }
         );
 
@@ -136,9 +136,7 @@ export async function Login(req: Request, res: Response<Iresponse>) {
  */
 export async function GetUser(req: AuthRequest, res: Response<Iresponse>) {
     try {
-        const userId =
-            typeof req.user === "object" && req.user ? (req.user as any).id : null;
-
+        const userId = req.user?.id
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -199,25 +197,25 @@ export async function GoogleAuth(req: Request, res: Response) {
         }
 
         let user = await UserModel.findOne({
-            $or: [{ Gid: gid }, { Email: email }],
+            $or: [{ Oauthid: gid }, { Email: email }],
         });
 
         if (!user) {
             user = await UserModel.create({
                 Username: username,
                 Email: email,
-                Gid: gid,
+                Oauthid: gid,
                 isVerified: true,
             });
-        } else if (!user.Gid) {
-            user.Gid = gid;
+        } else if (!user.Oauthid) {
+            user.Oauthid = gid;
             user.isVerified = true;
             await user.save();
         }
 
         const token = jwt.sign(
             { id: user._id, email: user.Email, username: user.Username },
-            config.key,
+            config.JWT,
             { expiresIn: "1d" }
         );
 
@@ -256,10 +254,70 @@ export async function GitLogin(req: Request, res: Response) {
             }
         );
 
-        const accessToken = tokenResponse.data.access_token;
-        console.log(accessToken);
-        res.json({ accessToken });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to exchange token' });
+        const { access_token: accessToken, error, error_description } = tokenResponse.data;
+
+        if (error || !accessToken) {
+            console.error("GitHub OAuth token exchange failed:", tokenResponse.data);
+            return res.status(400).json({
+                success: false,
+                message: error_description || error || 'Failed to obtain access token from GitHub',
+                details: tokenResponse.data,
+            });
+        }
+
+        const userResponse = await axios.get(
+            'https://api.github.com/user',
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/vnd.github+json',
+                    'User-Agent': 'DeployForge-App',
+                },
+            }
+        );
+        const emailResponse = await axios.get(
+            'https://api.github.com/user/emails',
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/vnd.github+json',
+                    'User-Agent': 'DeployForge-App',
+                },
+            }
+        );
+        const primaryEmail = emailResponse.data.find(
+            (email: any) =>
+                email.primary && email.verified
+        );
+
+        const email = primaryEmail?.email || null;
+        const user= await UserModel.create({
+            Username: userResponse.data.name,
+            Email: email,
+            Oauthid: userResponse.data.id,
+            GitHubAccessToken: accessToken,
+            isVerified: true
+        })
+        const token = jwt.sign(
+            { id: user._id, email: user.Email, username: user.Username },
+            config.JWT,
+            { expiresIn: "1d" }
+        );
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+
+        const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+        return res.redirect(clientUrl);
+    } catch (error: any) {
+        console.error("Error in GitLogin:", error?.response?.data || error?.message || error);
+        res.status(500).json({
+            message: 'Failed to exchange token or fetch user profile',
+            error: error?.response?.data || error?.message || error,
+        });
     }
 }
