@@ -60,79 +60,83 @@ export function OAuthButtons({
   const actionText = mode === 'register' ? 'Sign up' : 'Continue';
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {/* Dual OAuth Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {/* GitHub OAuth Button */}
+        {/* GitHub Button */}
         <motion.button
           type="button"
           onClick={() => onConnect('github')}
           disabled={disabled || isGithubLoading || isGoogleLoading}
-          whileHover={{ y: -1, scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-          className={`btn-sweep group w-full py-2.5 px-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs sm:text-sm shadow-sm transition-colors duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed ${
-            providerStates.github === 'error' ? 'border-accent-rose/40' : ''
+          whileHover={!disabled && !isGithubLoading ? { y: -1.5, scale: 1.01 } : {}}
+          whileTap={!disabled && !isGithubLoading ? { scale: 0.985 } : {}}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          className={`btn-sweep group relative w-full py-2.5 px-3 rounded-xl bg-white/[0.035] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/20 text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs tracking-tight shadow-sm transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(255,255,255,0.06)] ${
+            providerStates.github === 'error' ? 'border-accent-rose/50 bg-accent-rose/[0.05]' : ''
           }`}
           aria-label={`${actionText} with GitHub`}
         >
           {isGithubLoading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin text-accent-cyan shrink-0" />
-              <span className="text-xs truncate">
-                {providerStates.github === 'redirecting' ? 'Redirecting...' : 'Connecting...'}
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-cyan shrink-0" />
+              <span className="text-xs truncate font-mono text-neutral-300">
+                {providerStates.github === 'redirecting' ? 'Redirecting...' : 'Handshaking...'}
               </span>
             </>
           ) : (
             <>
-              <GitHubMark className="w-4 h-4 text-white shrink-0 group-hover:scale-105 transition-transform duration-200" />
+              <GitHubMark className="w-4 h-4 text-white shrink-0 group-hover:scale-110 transition-transform duration-200" />
               <span className="truncate">{actionText} with GitHub</span>
             </>
           )}
         </motion.button>
 
-        {/* Google OAuth Button */}
+        {/* Google Button */}
         <motion.button
           type="button"
           onClick={() => onConnect('google')}
           disabled={disabled || isGithubLoading || isGoogleLoading}
-          whileHover={{ y: -1, scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-          className={`btn-sweep group w-full py-2.5 px-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs sm:text-sm shadow-sm transition-colors duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed ${
-            providerStates.google === 'error' ? 'border-accent-rose/40' : ''
+          whileHover={!disabled && !isGoogleLoading ? { y: -1.5, scale: 1.01 } : {}}
+          whileTap={!disabled && !isGoogleLoading ? { scale: 0.985 } : {}}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          className={`btn-sweep group relative w-full py-2.5 px-3 rounded-xl bg-white/[0.035] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/20 text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs tracking-tight shadow-sm transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(66,133,244,0.1)] ${
+            providerStates.google === 'error' ? 'border-accent-rose/50 bg-accent-rose/[0.05]' : ''
           }`}
           aria-label={`${actionText} with Google`}
         >
           {isGoogleLoading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin text-accent-cyan shrink-0" />
-              <span className="text-xs truncate">
-                {providerStates.google === 'redirecting' ? 'Redirecting...' : 'Connecting...'}
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-cyan shrink-0" />
+              <span className="text-xs truncate font-mono text-neutral-300">
+                {providerStates.google === 'redirecting' ? 'Redirecting...' : 'Handshaking...'}
               </span>
             </>
           ) : (
             <>
-              <GoogleMark className="w-4 h-4 shrink-0 group-hover:scale-105 transition-transform duration-200" />
+              <GoogleMark className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
               <span className="truncate">{actionText} with Google</span>
             </>
           )}
         </motion.button>
       </div>
 
-      {/* Inline OAuth Error with AnimatePresence */}
+      {/* Inline OAuth Error Notice */}
       <AnimatePresence>
         {oauthError && (
           <motion.div
             initial={{ opacity: 0, y: -4, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -4, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="text-[11px] font-mono text-accent-rose flex items-start gap-1.5 p-2 rounded-lg bg-accent-rose/[0.06] border border-accent-rose/20"
-            role="alert"
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
           >
-            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>{oauthError}</span>
+            <div
+              className="text-[11px] font-mono text-accent-rose flex items-start gap-1.5 p-2.5 rounded-xl bg-accent-rose/[0.08] border border-accent-rose/25"
+              role="alert"
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span className="leading-tight">{oauthError}</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

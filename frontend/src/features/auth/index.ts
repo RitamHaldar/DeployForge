@@ -6,6 +6,7 @@ export { PasswordStrengthBar } from './components/PasswordStrengthBar';
 export { AuthHeader } from './components/AuthHeader';
 export { AuthFooter } from './components/AuthFooter';
 export { AmbientParticleCanvas } from './components/AmbientParticleCanvas';
+export { InfrastructureSentinel } from './components/InfrastructureSentinel';
 export { useAuthForm } from './hooks/useAuthForm';
 export { useOAuth } from './hooks/useOAuth';
 export { authApi } from './services/authApi';

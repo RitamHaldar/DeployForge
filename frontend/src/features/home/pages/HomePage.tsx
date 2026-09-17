@@ -115,7 +115,7 @@ export function HomePage({ onNavigate }: HomePageProps = {}) {
       <RemediationSection />
       <CliTerminalSection />
       <ObservabilitySection />
-      <CallToActionSection />
+      <CallToActionSection onNavigate={onNavigate} />
 
       {/* Footer */}
       <Footer />
