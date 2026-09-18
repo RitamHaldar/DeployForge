@@ -1,0 +1,22 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+
+build:
+  tagPolicy:
+    sha256: {}
+  artifacts:
+    - image: auth
+      context: auth
+      docker:
+        dockerfile: Dockerfile
+    - image: heal
+      context: healservice
+      docker:
+        dockerfile: Dockerfile
+manifests:
+  rawYaml:
+    - k8s/auth-deployment.yml
+    - k8s/auth-service.yml
+    - k8s/heal-deployment.yml
+    - k8s/heal-service.yml
+    - k8s/secrets.yml

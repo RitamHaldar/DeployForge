@@ -1,7 +1,10 @@
 import { app } from "./src/app.js";
 import { coreV1Api } from "./src/k8s/kubernetes.js";
+import { connectTODb } from "./src/config/db.js"
+
 
 const PORT = process.env.PORT || 3000;
+connectTODb()
 
 app.listen(PORT, async () => {
   console.log(`[KubeHeal Controller] Running on http://localhost:${PORT}`);

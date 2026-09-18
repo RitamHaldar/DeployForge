@@ -148,8 +148,8 @@ All endpoints are mounted at `/api/auth` and `/` (e.g. `/api/auth/login` or `/lo
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `PATCH` | `/api/auth/register` | Register new user with username, email, password | No |
-| `GET` | `/api/auth/login` | Authenticate with credentials, return JWT & set cookie | No |
+| `POST` | `/api/auth/register` | Register new user with username, email, password | No |
+| `POST` | `/api/auth/login` | Authenticate with credentials, return JWT & set cookie | No |
 | `GET` | `/api/auth/get-user` | Retrieve profile of currently authenticated user | Yes (JWT Cookie) |
 | `GET` | `/api/auth/google` | Initiate Google OAuth 2.0 redirect | No |
 | `GET` | `/api/auth/google/callback` | Handle Google OAuth callback, issue JWT & redirect | No |
@@ -160,7 +160,7 @@ All endpoints are mounted at `/api/auth` and `/` (e.g. `/api/auth/login` or `/lo
 
 ### 1. User Registration
 - **URL**: `/api/auth/register`
-- **Method**: `PATCH`
+- **Method**: `POST`
 - **Body**:
   ```json
   {
@@ -189,7 +189,7 @@ All endpoints are mounted at `/api/auth` and `/` (e.g. `/api/auth/login` or `/lo
 
 ### 2. User Login
 - **URL**: `/api/auth/login`
-- **Method**: `GET`
+- **Method**: `POST`
 - **Body**:
   ```json
   {

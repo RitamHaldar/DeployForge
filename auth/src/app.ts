@@ -3,7 +3,7 @@
  * Configures global middlewares, CORS policy, Passport authentication, and exports the Express app.
  */
 
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import passport from "passport";
 import cookieParser from "cookie-parser";
@@ -35,6 +35,12 @@ passport.use(stratagey);
 
 // Mount authentication routes at /api/auth and root
 app.use("/api/auth", authRoute);
-app.use("/", authRoute);
+
+app.get("/auth/heath",(req:Request,res:Response)=>{
+    res.status(200).json({
+        success:true,
+        message:"Auth Service is working"
+    })
+})
 
 export default app;

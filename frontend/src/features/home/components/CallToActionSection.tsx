@@ -76,9 +76,9 @@ export function CallToActionSection({ onNavigate }: CallToActionSectionProps) {
   const handleDeployClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (onNavigate) {
-      onNavigate('/auth?mode=register');
+      onNavigate('/register');
     } else {
-      window.location.href = '/auth?mode=register';
+      window.location.href = '/register';
     }
   };
 
@@ -222,7 +222,7 @@ export function CallToActionSection({ onNavigate }: CallToActionSectionProps) {
             className="flex flex-wrap items-center justify-center gap-4 mb-12"
           >
             <motion.a
-              href="/auth?mode=register"
+              href="/register"
               onClick={handleDeployClick}
               whileHover={{ y: -2, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

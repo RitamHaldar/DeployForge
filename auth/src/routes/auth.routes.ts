@@ -16,14 +16,14 @@ export const authRoute = Router();
  * @desc    Register a new user account with credentials
  * @access  Public
  */
-authRoute.patch("/register", Register);
+authRoute.post("/register", Register);
 
 /**
  * @route   GET /login
  * @desc    Authenticate existing user and return JWT + set cookie
  * @access  Public
  */
-authRoute.get("/login", Login);
+authRoute.post("/login", Login);
 
 /**
  * @route   GET /get-user

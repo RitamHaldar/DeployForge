@@ -1,78 +1,16 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import type { AuthMode } from '../types';
-import { useAuthForm } from '../hooks/useAuthForm';
-import { useOAuth } from '../hooks/useOAuth';
-import { AuthCard } from '../components/AuthCard';
+import { useEffect, useRef } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuthHeader } from '../components/AuthHeader';
 import { AuthFooter } from '../components/AuthFooter';
 import { AmbientParticleCanvas } from '../components/AmbientParticleCanvas';
 import { InfrastructureSentinel } from '../components/InfrastructureSentinel';
 
-interface AuthPageProps {
-  initialMode?: AuthMode;
-  onNavigateHome?: () => void;
-  onNavigate?: (path: string) => void;
-}
+export function AuthLayout() {
+  const location = useLocation();
+  const navigate = useNavigate();
 
-export function AuthPage({
-  initialMode = 'login',
-  onNavigateHome,
-  onNavigate
-}: AuthPageProps) {
-  // Determine mode from query parameter or prop
-  const getUrlMode = useCallback((): AuthMode => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const m = params.get('mode');
-      if (m === 'register') return 'register';
-      if (m === 'forgot-password') return 'forgot-password';
-      if (window.location.pathname.includes('forgot-password')) return 'forgot-password';
-    }
-    return initialMode;
-  }, [initialMode]);
-
-  const [currentMode, setCurrentMode] = useState<AuthMode>(getUrlMode);
-
-  const {
-    formData,
-    errors,
-    submitStatus,
-    statusMessage,
-    showPassword,
-    isEmailValid,
-    passwordStrength,
-    setFieldValue,
-    setFieldTouched,
-    togglePasswordVisibility,
-    switchMode: internalSwitchMode,
-    handleSubmit
-  } = useAuthForm(currentMode);
-
-  const {
-    providerStates,
-    oauthError,
-    connectOAuth
-  } = useOAuth();
-
-  // Mode switcher that synchronizes URL cleanly
-  const handleSwitchMode = useCallback((newMode: AuthMode) => {
-    setCurrentMode(newMode);
-    internalSwitchMode(newMode);
-
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (newMode === 'login') {
-        url.searchParams.set('mode', 'login');
-      } else if (newMode === 'register') {
-        url.searchParams.set('mode', 'register');
-      } else {
-        url.searchParams.set('mode', 'forgot-password');
-      }
-      window.history.pushState(null, '', url.pathname + url.search);
-    }
-  }, [internalSwitchMode]);
-
-  // Dual Hardware-Accelerated Lerped Cursor Ambient Follower
+  // Dual Hardware-Accelerated Lerped Cursor Ambient Follower (preserved across route changes)
   const lightRef = useRef<HTMLDivElement | null>(null);
   const secondaryLightRef = useRef<HTMLDivElement | null>(null);
 
@@ -95,12 +33,10 @@ export function AuthPage({
     };
 
     const updateLights = () => {
-      // Primary cyan orb
       currentX += (targetX - currentX) * 0.07;
       currentY += (targetY - currentY) * 0.07;
       lightEl.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%)`;
 
-      // Secondary deep indigo/blue orb with softer lag
       if (secondaryLightEl) {
         secX += (targetX - secX) * 0.04;
         secY += (targetY - secY) * 0.04;
@@ -120,14 +56,10 @@ export function AuthPage({
   }, []);
 
   const handleReturnHome = () => {
-    if (onNavigateHome) {
-      onNavigateHome();
-    } else if (onNavigate) {
-      onNavigate('/');
-    } else {
-      window.location.href = '/';
-    }
+    navigate('/');
   };
+
+  const isRegister = location.pathname.includes('/register');
 
   return (
     <div className="relative h-screen h-[100dvh] max-h-screen bg-[#070809] text-[#F5F5F5] flex flex-col justify-between overflow-hidden select-none selection:bg-accent-cyan/25 selection:text-accent-cyan">
@@ -151,7 +83,7 @@ export function AuthPage({
       {/* Ambient background noise overlay */}
       <div className="fixed inset-0 bg-noise pointer-events-none z-0" aria-hidden="true" />
 
-      {/* Lightweight, battery-friendly ambient particles & filament mesh */}
+      {/* Persistent Ambient Particle Canvas (Zero jitter/restart on page switches) */}
       <AmbientParticleCanvas />
 
       {/* Top Header */}
@@ -164,7 +96,7 @@ export function AuthPage({
           {/* Left Wing (Desktop Only): Live Infrastructure Sentinel Dashboard */}
           <InfrastructureSentinel />
 
-          {/* Right Wing: Master Auth Card */}
+          {/* Right Wing: Master Auth Card with Fluid Page Transitions */}
           <div className="w-full max-w-[420px] mx-auto lg:mx-0 shrink-0">
             {/* Mobile Top Status Pill (<lg screens) */}
             <div className="lg:hidden flex items-center justify-center mb-2.5">
@@ -176,29 +108,37 @@ export function AuthPage({
               </div>
             </div>
 
-            <AuthCard
-              mode={currentMode}
-              formData={formData}
-              errors={errors}
-              submitStatus={submitStatus}
-              statusMessage={statusMessage}
-              showPassword={showPassword}
-              isEmailValid={isEmailValid}
-              passwordStrength={passwordStrength}
-              providerStates={providerStates}
-              oauthError={oauthError}
-              onFieldChange={setFieldValue}
-              onFieldBlur={setFieldTouched}
-              onTogglePasswordVisibility={togglePasswordVisibility}
-              onSwitchMode={handleSwitchMode}
-              onSubmit={(e) =>
-                handleSubmit(e, (url) => {
-                  if (onNavigate) onNavigate(url);
-                  else window.location.href = url;
-                })
-              }
-              onOAuthConnect={connectOAuth}
-            />
+            {/* Smooth Animated Outlet */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={isRegister ? 'register-view' : 'login-view'}
+                initial={{
+                  opacity: 0,
+                  x: isRegister ? 16 : -16,
+                  scale: 0.985,
+                  filter: 'blur(3px)',
+                }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  scale: 1,
+                  filter: 'blur(0px)',
+                }}
+                exit={{
+                  opacity: 0,
+                  x: isRegister ? -16 : 16,
+                  scale: 0.985,
+                  filter: 'blur(3px)',
+                }}
+                transition={{
+                  duration: 0.22,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className="w-full"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
 
             {/* Legal and Privacy Disclaimer */}
             <div className="mt-2 text-center px-4">

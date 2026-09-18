@@ -53,17 +53,23 @@ DeployForge features an immersive, cybernetic developer aesthetic built on pure 
 ## 🚀 Component Architecture
 
 ### 1. Authentication Suite (`src/features/auth`)
-* **Single-Viewport Lock (Zero Scroll)**: Locked to strict `100dvh` (`h-screen h-[100dvh] max-h-screen overflow-hidden`) with zero vertical or horizontal scrollbars across desktop and mobile.
+* **Clean Route Architecture (Zero Params / Queries)**:
+  - Full React Router (`createBrowserRouter`) routing with dedicated, parameter-free endpoints:
+    - `/login` ➔ Dedicated **[LoginPage](file:///c:/Users/RH/Desktop/DeployForge/frontend/src/features/auth/pages/LoginPage.tsx)** with active Sign In pill, TLS 1.3 telemetry badge, OAuth triggers, and credential fields.
+    - `/register` ➔ Dedicated **[RegisterPage](file:///c:/Users/RH/Desktop/DeployForge/frontend/src/features/auth/pages/RegisterPage.tsx)** with active Create Account pill, Free Tier badge, developer handle `@`, and 4-tier password strength bar.
+    - `/auth` ➔ Automatic fallback redirecting cleanly to `/login`.
+* **Zero-Jitter Persistent Shell (`AuthLayout.tsx`)**:
+  - Hosts the **`AmbientParticleCanvas`**, 3D cursor follower lights, **`InfrastructureSentinel`**, **`AuthHeader`**, and **`AuthFooter`** in a persistent layout shell.
+  - **Zero Frame Drops**: The heavy 2D particle canvas and live SVG telemetry sentinel never unmount, blink, or restart their loops during page transitions between `/login` and `/register`.
+* **Fluid Directional Page Transitions**:
+  - Directional sliding (`x: ±16px`) combined with hardware-accelerated micro-blur crossfading (`filter: blur(3px)` ➔ `blur(0px)`).
+  - Container height smoothly morphs via Framer Motion spring physics (`layout="position"`), completely eliminating layout pops when moving between shorter login and taller registration forms.
+  - Shared tab switcher with synchronized spring pill indicator (`layoutId="auth-tab-indicator"`).
+  - State preservation: preserves entered email seamlessly across page switches via React Router navigation state without polluting the URL.
 * **Infrastructure Sentinel (`InfrastructureSentinel.tsx`)**:
   - Live animated SVG topology with glowing data packets flowing between Anycast Clients, the Sentinel Core, and K8s Worker Nodes.
   - Real-time simulated telemetry: `< 15ms` detection latency, automated cluster remediation, and `99.999%` SLA target.
   - Rotating single-line kernel event stream ticker.
-* **Master Auth Card (`AuthCard.tsx`)**:
-  - Fluid layout height morphing (`layout="position"`) between **Sign In**, **Create Account**, and **Forgot Password**.
-  - Magnetic sliding pill tab switcher (`layoutId="active-auth-tab"`).
-  - Prefix icons (`Mail`, `Lock`, `User`) transitioning from neutral to glowing cyber-cyan upon focus.
-  - Password strength meter with 4 segmented neon LED bars and real-time 4-point requirement chips.
-  - Micro-shake error animation on invalid submissions.
 * **Ambient Canvas (`AmbientParticleCanvas.tsx`)**:
   - DPR-clamped (1.5x) particle mesh with connecting distance-based filaments.
   - Automatically pauses on tab visibility loss to conserve client CPU and battery.

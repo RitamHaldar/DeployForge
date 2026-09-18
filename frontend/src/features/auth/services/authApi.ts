@@ -134,13 +134,13 @@ export const authApi = {
 
       return {
         success: true,
-        redirectUrl: '/auth?mode=login'
+        redirectUrl: '/login'
       };
     } catch {
       // In dev without backend, acknowledge receipt cleanly
       return {
         success: true,
-        redirectUrl: '/auth?mode=login'
+        redirectUrl: '/login'
       };
     }
   },

@@ -79,7 +79,7 @@ export function HeroSection() {
         className="relative z-10 flex flex-wrap items-center justify-center gap-3.5 mb-8"
       >
         <motion.a
-          href="/auth?mode=register"
+          href="/register"
           whileHover={{ y: -2, scale: 1.025 }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: 'spring', stiffness: 450, damping: 25 }}

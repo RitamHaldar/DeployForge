@@ -46,10 +46,11 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
 
   const handleAuthNav = (mode: 'login' | 'register') => {
     setMobileMenuOpen(false);
+    const dest = mode === 'register' ? '/register' : '/login';
     if (onNavigate) {
-      onNavigate(`/auth?mode=${mode}`);
+      onNavigate(dest);
     } else {
-      window.location.href = `/auth?mode=${mode}`;
+      window.location.href = dest;
     }
   };
 

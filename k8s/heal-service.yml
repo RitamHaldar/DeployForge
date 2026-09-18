@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name:  heal-service
+spec:
+  selector:
+    app:  heal
+  type:  ClusterIP
+  ports:
+  - name:  heal-port
+    port:  80
+    targetPort:  3000

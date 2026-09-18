@@ -1,4 +1,6 @@
-export { AuthPage } from './pages/AuthPage';
+export { LoginPage } from './pages/LoginPage';
+export { RegisterPage } from './pages/RegisterPage';
+export { AuthLayout } from './pages/AuthLayout';
 export { AuthCard } from './components/AuthCard';
 export { AuthInput } from './components/AuthInput';
 export { OAuthButtons } from './components/OAuthButtons';

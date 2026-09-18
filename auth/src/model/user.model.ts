@@ -36,7 +36,6 @@ const userschema = new mongoose.Schema<UserSchema>({
     Email: {
         type: String,
         required: true,
-        unique: true,
     },
     Oauthid: {
         type: String,
