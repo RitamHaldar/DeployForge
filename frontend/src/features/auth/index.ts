@@ -10,6 +10,5 @@ export { AuthFooter } from './components/AuthFooter';
 export { AmbientParticleCanvas } from './components/AmbientParticleCanvas';
 export { InfrastructureSentinel } from './components/InfrastructureSentinel';
 export { useAuthForm } from './hooks/useAuthForm';
-export { useOAuth } from './hooks/useOAuth';
 export { authApi } from './services/authApi';
 export * from './types';

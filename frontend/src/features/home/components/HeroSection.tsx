@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { Zap, ShieldCheck, ChevronRight, Timer, Copy, Check, Terminal, Sparkles } from 'lucide-react';
+import { Zap, ShieldCheck, ChevronRight, Timer, Copy, Check, Terminal, Sparkles, GitBranch } from 'lucide-react';
 import { AnimatedCounter } from './AnimatedCounter';
+import type { RootState } from '../../../App/app.store';
 
 export function HeroSection() {
+  const user = useSelector((state: RootState) => state.auth.user);
   const [copied, setCopied] = useState(false);
   const installCmd = 'curl -fsSL https://deployforge.ai/install.sh | sh';
 
@@ -78,16 +81,29 @@ export function HeroSection() {
         transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 flex flex-wrap items-center justify-center gap-3.5 mb-8"
       >
-        <motion.a
-          href="/register"
-          whileHover={{ y: -2, scale: 1.025 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 450, damping: 25 }}
-          className="btn-sweep bg-white text-black hover:bg-neutral-100 font-semibold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-[0_0_28px_rgba(255,255,255,0.18)] hover:shadow-[0_0_35px_rgba(255,255,255,0.28)] flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan tracking-tight font-sans group"
-        >
-          <Zap className="w-4 h-4 text-black fill-black transition-transform group-hover:scale-110" />
-          <span>Launch Autonomous Engine</span>
-        </motion.a>
+        {user ? (
+          <motion.a
+            href="/repos"
+            whileHover={{ y: -2, scale: 1.025 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+            className="btn-sweep bg-white text-black hover:bg-neutral-100 font-semibold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-[0_0_28px_rgba(255,255,255,0.18)] hover:shadow-[0_0_35px_rgba(255,255,255,0.28)] flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan tracking-tight font-sans group"
+          >
+            <GitBranch className="w-4 h-4 text-black transition-transform group-hover:scale-110" />
+            <span>Manage Cloud Repositories</span>
+          </motion.a>
+        ) : (
+          <motion.a
+            href="/register"
+            whileHover={{ y: -2, scale: 1.025 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+            className="btn-sweep bg-white text-black hover:bg-neutral-100 font-semibold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-[0_0_28px_rgba(255,255,255,0.18)] hover:shadow-[0_0_35px_rgba(255,255,255,0.28)] flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan tracking-tight font-sans group"
+          >
+            <Zap className="w-4 h-4 text-black fill-black transition-transform group-hover:scale-110" />
+            <span>Launch Autonomous Engine</span>
+          </motion.a>
+        )}
 
         <motion.a
           href="#self-healing"

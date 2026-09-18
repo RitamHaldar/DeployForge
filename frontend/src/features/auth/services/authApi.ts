@@ -16,7 +16,7 @@ export async function LoginApi(payload: LoginPayload): Promise<AuthResponse> {
     return {
       success: true,
       user: response.data.body?.user,
-      redirectUrl: '/console',
+      redirectUrl: '/repos',
     };
   } catch (err: any) {
     return {
@@ -31,12 +31,13 @@ export async function LoginApi(payload: LoginPayload): Promise<AuthResponse> {
 
 export async function RegisterApi(payload: RegisterPayload): Promise<AuthResponse> {
   try {
-    const response = await api.post<{ success: boolean; message: string; body?: { user: AuthUser } }>("/register", {
-      payload
-    })
-    return response.data;
-  }
-  catch (err: any) {
+    const response = await api.post<{ success: boolean; message: string; body?: { user: AuthUser } }>("/register", payload);
+    return {
+      success: true,
+      user: response.data.body?.user,
+      redirectUrl: '/repos',
+    };
+  } catch (err: any) {
     return {
       success: false,
       error: {

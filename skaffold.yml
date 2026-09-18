@@ -20,3 +20,4 @@ manifests:
     - k8s/heal-deployment.yml
     - k8s/heal-service.yml
     - k8s/secrets.yml
+    - k8s/ingress.yml

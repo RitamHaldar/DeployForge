@@ -8,29 +8,26 @@ spec:
   ingressClassName: nginx
   rules:
     - http:
-      paths:
-      - pathType: Prefix
-        path: "/api/k8s"
-        backend:
-          service:
-            name: health-service
-            port: 
-              number: 80
-    - http:
-      paths:
-      - pathType: Prefix
-        path: "/api/github"
-        backend:
-          service:
-            name: health-service
-            port: 
-              number: 80
-    - http:
-      paths:
-      - pathType: Prefix
-        path: "/api/auth"
-        backend:
-          service:
-            name: auth-service
-            port: 
-              number: 80
+        paths:
+          - pathType: Prefix
+            path: /api/k8s
+            backend:
+              service:
+                name: heal-service
+                port: 
+                  number: 80
+          - pathType: Prefix
+            path: /api/github
+            backend:
+              service:
+                name: heal-service
+                port: 
+                  number: 80
+          - pathType: Prefix
+            path: /api/auth
+            backend:
+              service:
+                name: auth-service
+                port: 
+                  number: 80
+

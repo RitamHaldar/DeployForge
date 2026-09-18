@@ -44,7 +44,7 @@ export async function verifyuser(
     }
 
     try {
-        const data = jwt.verify(token, config.key);
+        const data = jwt.verify(token, config.JWT || config.key);
         req.user = data as UserPayload;
         next();
     } catch (e) {

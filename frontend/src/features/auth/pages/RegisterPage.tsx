@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, UserPlus, Loader2, Check, AlertCircle } from 'lucide-react';
 import { useAuthForm } from '../hooks/useAuthForm';
-import { useOAuth } from '../hooks/useOAuth';
 import { OAuthButtons } from '../components/OAuthButtons';
 import { AuthInput } from '../components/AuthInput';
 import { PasswordStrengthBar } from '../components/PasswordStrengthBar';
@@ -19,13 +18,15 @@ export function RegisterPage() {
     statusMessage,
     showPassword,
     passwordStrength,
+    providerStates,
+    oauthError,
+    connectOAuth,
+    isConnecting,
     setFieldValue,
     setFieldTouched,
     togglePasswordVisibility,
     handleSubmit,
   } = useAuthForm('register');
-
-  const { providerStates, oauthError, connectOAuth } = useOAuth();
 
   // Read email from location state if passed during navigation
   useEffect(() => {
@@ -35,7 +36,7 @@ export function RegisterPage() {
     }
   }, [location.state, setFieldValue, formData.email]);
 
-  const isSubmitting = submitStatus === 'loading' || submitStatus === 'redirecting';
+  const isSubmitting = submitStatus === 'loading' || submitStatus === 'redirecting' || isConnecting;
   const isSuccess = submitStatus === 'success';
 
   const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {

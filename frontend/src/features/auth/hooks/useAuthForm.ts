@@ -1,83 +1,126 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import type {
   AuthMode,
   AuthFormData,
   ValidationErrors,
   PasswordStrengthInfo,
-  SubmitStatus
+  SubmitStatus,
+  OAuthProvider,
+  OAuthState
 } from '../types';
 import { authApi } from '../services/authApi';
+import { setLoading, setError, setUser } from '../auth.slice';
 
-export function useAuthForm(initialMode: AuthMode = 'login') {
-  const [mode, setMode] = useState<AuthMode>(initialMode);
+function getPasswordStrength(val: string): PasswordStrengthInfo {
+  if (!val) {
+    return { score: 0, level: 'empty', label: 'Empty', activeBars: 0 };
+  }
+
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+
+  if (score === 0 || val.length < 6) {
+    return { score: 1, level: 'weak', label: 'Weak', activeBars: 1 };
+  }
+  if (score <= 2) {
+    return { score: 2, level: 'fair', label: 'Fair', activeBars: 2 };
+  }
+  if (score === 3) {
+    return { score: 3, level: 'strong', label: 'Strong', activeBars: 3 };
+  }
+  return { score: 4, level: 'excellent', label: 'Excellent', activeBars: 4 };
+}
+
+export function useAuthForm(mode: AuthMode = 'login') {
+  const dispatch = useDispatch();
+
+  // Form State
   const [formData, setFormData] = useState<AuthFormData>({
     username: '',
     email: '',
     password: ''
   });
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>('idle');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Email format validator
-  const isEmailValid = useMemo(() => {
-    if (!formData.email) return false;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim());
-  }, [formData.email]);
+  // Integrated OAuth State
+  const [activeProvider, setActiveProvider] = useState<OAuthProvider | null>(null);
+  const [providerStates, setProviderStates] = useState<Record<OAuthProvider, OAuthState>>({
+    github: 'idle',
+    google: 'idle'
+  });
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const oauthTimeoutRef = useRef<number | null>(null);
 
-  // Password strength evaluator
-  const passwordStrength = useMemo<PasswordStrengthInfo>(() => {
-    const val = formData.password;
-    if (!val) {
-      return { score: 0, level: 'empty', label: 'Empty', activeBars: 0 };
-    }
+  useEffect(() => {
+    return () => {
+      if (oauthTimeoutRef.current) {
+        window.clearTimeout(oauthTimeoutRef.current);
+      }
+    };
+  }, []);
 
-    let score = 0;
-    if (val.length >= 8) score++;
-    if (val.length >= 10) score++;
-    if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
-    if (/[^A-Za-z0-9]/.test(val)) score++;
+  const passwordStrength = getPasswordStrength(formData.password);
 
-    if (score === 0 || val.length < 6) {
-      return { score: 1, level: 'weak', label: 'Weak', activeBars: 1 };
-    }
-    if (score === 1 || score === 2) {
-      return { score: 2, level: 'fair', label: 'Fair', activeBars: 2 };
-    }
-    if (score === 3) {
-      return { score: 3, level: 'strong', label: 'Strong', activeBars: 3 };
-    }
-    return { score: 4, level: 'excellent', label: 'Excellent', activeBars: 4 };
-  }, [formData.password]);
-
-  // Field change handler
-  const setFieldValue = useCallback((field: keyof AuthFormData, value: string) => {
+  const setFieldValue = (field: keyof AuthFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear errors when the user edits
     setErrors(prev => ({ ...prev, [field]: undefined, general: undefined }));
-  }, []);
+  };
 
-  const setFieldTouched = useCallback((field: keyof AuthFormData) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-  }, []);
+  const setFieldTouched = (_field: keyof AuthFormData) => {};
 
-  const togglePasswordVisibility = useCallback(() => {
+  const togglePasswordVisibility = () => {
     setShowPassword(prev => !prev);
-  }, []);
+  };
 
-  // Mode switcher with error reset
-  const switchMode = useCallback((newMode: AuthMode) => {
-    setMode(newMode);
+  const clearOAuthError = () => {
+    setOauthError(null);
+  };
+
+  const connectOAuth = async (provider: OAuthProvider) => {
+    if (activeProvider !== null || submitStatus === 'loading') return;
+
+    setOauthError(null);
     setErrors({});
-    setTouched({});
-    setSubmitStatus('idle');
-    setStatusMessage('');
-  }, []);
+    setActiveProvider(provider);
+    setProviderStates(prev => ({ ...prev, [provider]: 'connecting' }));
 
-  // Form validator
-  const validate = useCallback((): boolean => {
+    try {
+      const result = await authApi.initiateOAuth(provider);
+
+      if (result.redirectUrl) {
+        setProviderStates(prev => ({ ...prev, [provider]: 'redirecting' }));
+        oauthTimeoutRef.current = window.setTimeout(() => {
+          window.location.href = result.redirectUrl!;
+        }, 400);
+      } else if (result.error) {
+        setProviderStates(prev => ({ ...prev, [provider]: 'error' }));
+        setOauthError(result.error);
+        oauthTimeoutRef.current = window.setTimeout(() => {
+          setProviderStates(prev => ({ ...prev, [provider]: 'idle' }));
+          setActiveProvider(null);
+        }, 3200);
+      }
+    } catch {
+      setProviderStates(prev => ({ ...prev, [provider]: 'error' }));
+      const errorMsg = `An unexpected network error occurred while connecting to ${
+        provider === 'github' ? 'GitHub' : 'Google'
+      }.`;
+      setOauthError(errorMsg);
+      oauthTimeoutRef.current = window.setTimeout(() => {
+        setProviderStates(prev => ({ ...prev, [provider]: 'idle' }));
+        setActiveProvider(null);
+      }, 3200);
+    }
+  };
+
+  const validate = (): boolean => {
     const newErrors: ValidationErrors = {};
 
     if (mode === 'register') {
@@ -85,8 +128,6 @@ export function useAuthForm(initialMode: AuthMode = 'login') {
         newErrors.username = 'Username is required.';
       } else if (formData.username.trim().length < 3) {
         newErrors.username = 'Username must be at least 3 characters.';
-      } else if (!/^[a-zA-Z0-9_-]+$/.test(formData.username.trim())) {
-        newErrors.username = 'Only letters, numbers, underscores, and dashes allowed.';
       }
     }
 
@@ -106,103 +147,75 @@ export function useAuthForm(initialMode: AuthMode = 'login') {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, mode]);
+  };
 
-  // Form submission handler
-  const handleSubmit = useCallback(async (e: React.FormEvent, onSuccessRedirect?: (url: string) => void) => {
+  const handleSubmit = async (e: React.FormEvent, onSuccessRedirect?: (url: string) => void) => {
     e.preventDefault();
-    if (submitStatus === 'loading') return;
-
-    // Touch all applicable fields
-    setTouched({ username: true, email: true, password: true });
-
+    if (submitStatus === 'loading' || activeProvider !== null) return;
     if (!validate()) return;
 
     setSubmitStatus('loading');
+    dispatch(setLoading(true));
     setErrors({});
+    setOauthError(null);
 
     try {
-      if (mode === 'login') {
-        const res = await authApi.login({
-          email: formData.email,
-          password: formData.password
-        });
+      const res =
+        mode === 'login'
+          ? await authApi.login({ email: formData.email, password: formData.password })
+          : mode === 'register'
+          ? await authApi.register(formData)
+          : await authApi.requestPasswordReset(formData.email);
 
-        if (res.success) {
-          setSubmitStatus('success');
-          setStatusMessage('Signed in successfully');
-          setTimeout(() => {
-            setSubmitStatus('redirecting');
-            setStatusMessage('Redirecting to DeployForge console...');
-            setTimeout(() => {
-              if (onSuccessRedirect && res.redirectUrl) {
-                onSuccessRedirect(res.redirectUrl);
-              }
-            }, 600);
-          }, 450);
+      if (res.success) {
+        if (res.user) {
+          dispatch(setUser({ user: res.user }));
         } else {
-          setSubmitStatus('error');
-          setErrors({ general: res.error?.message || 'Authentication failed.' });
+          dispatch(setLoading(false));
         }
-      } else if (mode === 'register') {
-        const res = await authApi.register(formData);
+        setSubmitStatus('success');
+        setStatusMessage(mode === 'login' ? 'Signed in successfully' : 'Account created successfully');
 
-        if (res.success) {
-          setSubmitStatus('success');
-          setStatusMessage('Account created successfully');
-          setTimeout(() => {
-            setSubmitStatus('redirecting');
-            setStatusMessage('Setting up your developer workspace...');
-            setTimeout(() => {
-              if (onSuccessRedirect && res.redirectUrl) {
-                onSuccessRedirect(res.redirectUrl);
-              }
-            }, 600);
-          }, 450);
-        } else {
-          setSubmitStatus('error');
-          if (res.error?.code === 'username_taken') {
-            setErrors({ username: res.error.message });
-          } else if (res.error?.code === 'email_already_registered') {
-            setErrors({ email: res.error.message });
-          } else {
-            setErrors({ general: res.error?.message || 'Registration failed.' });
+        setTimeout(() => {
+          setSubmitStatus('redirecting');
+          if (onSuccessRedirect && res.redirectUrl) {
+            onSuccessRedirect(res.redirectUrl);
           }
-        }
-      } else if (mode === 'forgot-password') {
-        const res = await authApi.requestPasswordReset(formData.email);
-
-        if (res.success) {
-          setSubmitStatus('success');
-          setStatusMessage(`Password recovery dispatched to ${formData.email}`);
-          setTimeout(() => {
-            switchMode('login');
-          }, 2400);
-        } else {
-          setSubmitStatus('error');
-          setErrors({ general: res.error?.message || 'Failed to dispatch reset email.' });
-        }
+        }, 500);
+      } else {
+        const errorMsg = res.error?.message || 'Authentication failed.';
+        dispatch(setError(res.error || errorMsg));
+        setSubmitStatus('error');
+        setErrors({ general: errorMsg });
       }
     } catch {
+      const errorMsg = 'An unexpected connection error occurred. Please try again.';
+      dispatch(setError(errorMsg));
       setSubmitStatus('error');
-      setErrors({ general: 'An unexpected connection error occurred. Please try again.' });
+      setErrors({ general: errorMsg });
     }
-  }, [formData, mode, submitStatus, validate, switchMode]);
+  };
 
   return {
-    mode,
+    // Form State & Actions
     formData,
-    touched,
     errors,
     submitStatus,
     statusMessage,
     showPassword,
-    isEmailValid,
     passwordStrength,
     setFieldValue,
     setFieldTouched,
     togglePasswordVisibility,
-    switchMode,
-    handleSubmit
+    handleSubmit,
+
+    // Integrated OAuth State & Actions
+    providerStates,
+    oauthError,
+    activeProvider,
+    isConnecting: activeProvider !== null,
+    connectOAuth,
+    clearOAuthError
   };
 }
+

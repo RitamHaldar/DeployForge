@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpRight,
@@ -8,8 +10,13 @@ import {
   Layers,
   Cpu,
   Terminal,
-  Radio
+  Radio,
+  GitBranch,
+  User,
+  LogOut
 } from 'lucide-react';
+import type { RootState, AppDispatch } from '../../../App/app.store';
+import { logout } from '../../auth/auth.slice';
 
 interface NavbarProps {
   onNavigate?: (path: string) => void;
@@ -31,6 +38,10 @@ const NAV_LINKS: NavLinkItem[] = [
 ];
 
 export function Navbar({ onNavigate }: NavbarProps = {}) {
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const user = useSelector((state: RootState) => state.auth.user);
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -50,8 +61,12 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
     if (onNavigate) {
       onNavigate(dest);
     } else {
-      window.location.href = dest;
+      navigate(dest);
     }
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
   };
 
   const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -171,27 +186,67 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
               <span className="text-neutral-300 font-semibold">14ms</span>
             </div>
 
-            {/* Sign In Button */}
-            <button
-              type="button"
-              onClick={() => handleAuthNav('login')}
-              className="text-xs font-mono font-medium text-neutral-300 hover:text-white px-2.5 sm:px-3 py-1.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan rounded-lg hover:bg-white/[0.04]"
-            >
-              Sign In
-            </button>
+            {user ? (
+              <>
+                {/* Repositories Button (Authenticated) */}
+                <motion.button
+                  type="button"
+                  onClick={() => navigate('/repos')}
+                  whileHover={{ y: -1.5, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="btn-sweep relative bg-white text-black hover:bg-neutral-100 text-xs font-semibold px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.12)] hover:shadow-[0_0_25px_rgba(255,255,255,0.22)] flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan tracking-tight font-sans group"
+                >
+                  <GitBranch className="w-3.5 h-3.5 text-black" />
+                  <span>Repositories</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </motion.button>
 
-            {/* Launch Engine (Register) Action Button */}
-            <motion.button
-              type="button"
-              onClick={() => handleAuthNav('register')}
-              whileHover={{ y: -1.5, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="btn-sweep relative bg-white text-black hover:bg-neutral-100 text-xs font-semibold px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.12)] hover:shadow-[0_0_25px_rgba(255,255,255,0.22)] flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan tracking-tight font-sans group"
-            >
-              <span>Launch Engine</span>
-              <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </motion.button>
+                {/* User Chip */}
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs font-mono text-neutral-300">
+                  <div className="w-5 h-5 rounded-md bg-accent-cyan/15 border border-accent-cyan/30 flex items-center justify-center text-accent-cyan">
+                    <User className="w-3 h-3" />
+                  </div>
+                  <span className="max-w-[100px] truncate text-[11px]">
+                    {user.username || user.email?.split('@')[0]}
+                  </span>
+                </div>
+
+                {/* Sign Out Button */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="p-2 rounded-xl text-neutral-400 hover:text-accent-rose hover:bg-accent-rose/10 border border-transparent hover:border-accent-rose/25 transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Sign In Button */}
+                <button
+                  type="button"
+                  onClick={() => handleAuthNav('login')}
+                  className="text-xs font-mono font-medium text-neutral-300 hover:text-white px-2.5 sm:px-3 py-1.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan rounded-lg hover:bg-white/[0.04]"
+                >
+                  Sign In
+                </button>
+
+                {/* Launch Engine (Register) Action Button */}
+                <motion.button
+                  type="button"
+                  onClick={() => handleAuthNav('register')}
+                  whileHover={{ y: -1.5, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="btn-sweep relative bg-white text-black hover:bg-neutral-100 text-xs font-semibold px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.12)] hover:shadow-[0_0_25px_rgba(255,255,255,0.22)] flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan tracking-tight font-sans group"
+                >
+                  <span>Launch Engine</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </motion.button>
+              </>
+            )}
 
             {/* Mobile Hamburger Toggle Button */}
             <button
@@ -220,6 +275,23 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
               className="pointer-events-auto md:hidden mt-2 rounded-2xl bg-[#0B0D10]/95 backdrop-blur-2xl border border-white/[0.12] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden"
             >
               <nav className="flex flex-col gap-1">
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate('/repos');
+                    }}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-accent-cyan/10 border border-accent-cyan/25 text-xs font-mono text-accent-cyan mb-1"
+                  >
+                    <span className="flex items-center gap-2.5 font-semibold">
+                      <GitBranch className="w-4 h-4" />
+                      <span>My Repositories</span>
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-pulse" />
+                  </button>
+                )}
+
                 {NAV_LINKS.map((link) => {
                   const Icon = link.icon;
                   return (
@@ -242,8 +314,26 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
               </nav>
 
               <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-neutral-500">
-                <span>DeployForge Sentinel</span>
-                <span className="text-accent-emerald font-semibold">● 14ms Anycast</span>
+                {user ? (
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-neutral-300">Signed in as {user.username || user.email?.split('@')[0]}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-accent-rose hover:underline"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span>DeployForge Sentinel</span>
+                    <span className="text-accent-emerald font-semibold">● 14ms Anycast</span>
+                  </>
+                )}
               </div>
             </motion.div>
           )}

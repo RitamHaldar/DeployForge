@@ -76,3 +76,12 @@ export interface AuthState {
   isLoading: boolean;
   error: AuthApiError | string | null;
 }
+
+export interface GitResponse {
+  id: string | number;
+  name: string;
+  fullName: string;
+  private: boolean | string;
+  cloneUrl: string;
+  defaultBranch: string;
+}
