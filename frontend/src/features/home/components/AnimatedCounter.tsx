@@ -26,12 +26,7 @@ function DigitReel({
 }) {
   return (
     <span
-      className="inline-flex flex-col h-[1em] overflow-hidden select-none"
-      style={{
-        lineHeight: 1,
-        verticalAlign: 'baseline',
-        fontVariantNumeric: 'tabular-nums'
-      }}
+      className="inline-flex flex-col h-[1em] overflow-hidden select-none tabular-nums leading-none align-baseline"
       aria-hidden="true"
     >
       <motion.span
@@ -102,9 +97,9 @@ export function AnimatedCounter({
   // If reduced motion is requested, render static formatted text
   if (prefersReducedMotion) {
     return (
-      <span ref={containerRef} className={`inline-flex items-baseline font-mono ${className}`}>
+      <span ref={containerRef} className={`inline-flex items-baseline font-mono tabular-nums ${className}`}>
         {prefix && <span className="mr-0.5 opacity-80">{prefix}</span>}
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formattedString}</span>
+        <span>{formattedString}</span>
         {suffix && <span className="ml-0.5 opacity-80">{suffix}</span>}
       </span>
     );
@@ -126,12 +121,11 @@ export function AnimatedCounter({
   return (
     <span
       ref={containerRef}
-      className={`inline-flex items-baseline font-mono relative transition-all duration-300 ${className} ${
+      className={`inline-flex items-baseline font-mono tabular-nums relative transition-all duration-300 ${className} ${
         glowOnComplete && hasSettled
           ? 'drop-shadow-[0_0_8px_rgba(0,240,255,0.25)]'
           : ''
       }`}
-      style={{ fontVariantNumeric: 'tabular-nums' }}
       aria-label={`${prefix}${formattedString}${suffix}`}
     >
       {/* Prefix */}

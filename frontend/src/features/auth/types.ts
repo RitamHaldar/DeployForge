@@ -10,6 +10,22 @@ export interface AuthFormData {
   password: string;
 }
 
+export interface LoginPayload {
+  email?: string;
+  username?: string;
+  password: string;
+}
+
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  mobile?: {
+    Number: string;
+    CountryCode: string;
+  };
+}
+
 export interface ValidationErrors {
   username?: string;
   email?: string;
@@ -53,4 +69,10 @@ export interface AuthResponse {
   user?: AuthUser;
   error?: AuthApiError;
   redirectUrl?: string;
+}
+
+export interface AuthState {
+  user: AuthUser | null;
+  isLoading: boolean;
+  error: AuthApiError | string | null;
 }

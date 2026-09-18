@@ -1,4 +1,77 @@
+@import "tailwindcss";
 @import "lenis/dist/lenis.css";
+
+@theme {
+  --color-accent-cyan: #00F0FF;
+  --color-accent-emerald: #10B981;
+  --color-accent-rose: #F43F5E;
+  --color-accent-amber: #F59E0B;
+  --color-accent-blue: #0EA5E9;
+
+  --color-brand-bg: #070809;
+  --color-brand-surface: #090B0E;
+  --color-brand-card: rgba(11, 13, 16, 0.78);
+  --color-brand-border: rgba(255, 255, 255, 0.08);
+  --color-brand-border-hover: rgba(255, 255, 255, 0.18);
+  --color-brand-text: #F5F5F5;
+  --color-brand-muted: #9CA3AF;
+  --color-brand-cyan: #00F0FF;
+  --color-brand-cyan-dim: rgba(0, 240, 255, 0.1);
+  --color-brand-emerald: #10B981;
+  --color-brand-emerald-dim: rgba(16, 185, 129, 0.1);
+  --color-brand-rose: #F43F5E;
+  --color-brand-rose-dim: rgba(244, 63, 94, 0.1);
+  --color-brand-amber: #F59E0B;
+  --color-brand-amber-dim: rgba(245, 158, 11, 0.1);
+  --color-brand-blue: #0EA5E9;
+
+  --animate-forge: forgeGlow 3.5s ease-in-out infinite;
+  --animate-beam: beamTravel 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-pulse-ring: pulseRing 2.4s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+
+  @keyframes forgeGlow {
+    0%, 100% {
+      opacity: 0.85;
+      filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.3));
+    }
+    50% {
+      opacity: 1;
+      filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.7));
+    }
+  }
+
+  @keyframes beamTravel {
+    0% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    25% {
+      opacity: 0.9;
+    }
+    75% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: translateX(300%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes pulseRing {
+    0% {
+      transform: scale(0.95);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.3);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+  }
+}
 
 :root {
   color-scheme: dark;
@@ -9,7 +82,8 @@ html {
   background-color: #070809;
 }
 
-html.lenis, html.lenis body {
+html.lenis,
+html.lenis body {
   height: auto;
 }
 
@@ -31,7 +105,7 @@ body {
   width: 100%;
   min-height: 100vh;
   background-color: #070809;
-  color: #F5F5F5;
+  color: #f5f5f5;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   overflow-x: hidden;
 }
@@ -41,20 +115,7 @@ body {
   min-height: 100vh;
 }
 
-/* Subtle architectural grid pattern */
-.bg-tech-grid {
-  background-size: 48px 48px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-}
-
-/* Radial atmosphere */
-.radial-vignette {
-  background: radial-gradient(circle 800px at 50% 12%, rgba(14, 165, 233, 0.05), transparent 70%);
-}
-
-/* Production-grade scrollbar */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -63,86 +124,110 @@ body {
   background: #070809;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1C2128;
+  background: #1c2128;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2D333B;
+  background: #2d333b;
 }
 
-/* Subtle light sweep on primary interactive buttons */
-.light-sweep-btn {
+/* Architectural grid pattern utility */
+@utility bg-tech-grid {
+  background-size: 48px 48px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+/* Atmospheric radial spotlight */
+@utility radial-vignette {
+  background: radial-gradient(circle 800px at 50% 12%, rgba(14, 165, 233, 0.05), transparent 70%);
+}
+
+/* Micro-noise overlay */
+@utility bg-noise {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+/* Button light sweep interaction */
+@utility btn-sweep {
   position: relative;
   overflow: hidden;
-}
-.light-sweep-btn::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -70%;
-  width: 35%;
-  height: 200%;
-  background: linear-gradient(
-    60deg,
-    transparent,
-    rgba(255, 255, 255, 0.22),
-    transparent
-  );
-  transform: rotate(25deg);
-  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), left 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
-}
-.light-sweep-btn:hover::after {
-  left: 130%;
-}
-
-/* Keyframe for anvil status glow */
-@keyframes forgeGlow {
-  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.3)); }
-  50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.7)); }
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      60deg,
+      transparent,
+      rgba(255, 255, 255, 0.15),
+      transparent
+    );
+    transform: rotate(25deg) translateY(-100%);
+    transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  &:hover::after {
+    transform: rotate(25deg) translateY(100%);
+  }
 }
 
-.animate-forge {
-  animation: forgeGlow 3.5s ease-in-out infinite;
-}
-
-/* Signature Spotlight 1px Border Glow Effect */
-.spotlight-card {
+/* Secondary light sweep variant */
+@utility light-sweep-btn {
   position: relative;
-}
-.spotlight-card::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: radial-gradient(320px circle at var(--mouse-x, -999px) var(--mouse-y, -999px), rgba(0, 240, 255, 0.4), transparent 45%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.35s ease;
-  z-index: 10;
-}
-.spotlight-card:hover::before {
-  opacity: 1;
-}
-
-/* Pipeline Animated Data Beam */
-@keyframes beamTravel {
-  0% { transform: translateX(-100%); opacity: 0; }
-  25% { opacity: 0.9; }
-  75% { opacity: 0.9; }
-  100% { transform: translateX(300%); opacity: 0; }
-}
-.animate-beam {
-  animation: beamTravel 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -70%;
+    width: 35%;
+    height: 200%;
+    background: linear-gradient(
+      60deg,
+      transparent,
+      rgba(255, 255, 255, 0.22),
+      transparent
+    );
+    transform: rotate(25deg);
+    transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), left 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  &:hover::after {
+    left: 130%;
+  }
 }
 
-/* Auth Glass Card & Input Focus System */
-.auth-glass-card {
+/* Interactive cursor spotlight card glow */
+@utility spotlight-card {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(320px circle at var(--mouse-x, -999px) var(--mouse-y, -999px), rgba(0, 240, 255, 0.4), transparent 45%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    z-index: 10;
+  }
+  &:hover::before {
+    opacity: 1;
+  }
+}
+
+/* Glassmorphic card styling */
+@utility auth-glass-card {
   background: rgba(11, 13, 16, 0.78);
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
@@ -151,106 +236,29 @@ body {
               0 0 0 1px rgba(255, 255, 255, 0.04) inset,
               0 0 40px -10px rgba(0, 240, 255, 0.03);
   position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(0, 240, 255, 0.22) 20%,
+      rgba(14, 165, 233, 0.06) 50%,
+      rgba(255, 255, 255, 0.02) 75%,
+      rgba(255, 255, 255, 0.08) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
 }
 
-.auth-glass-card::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.16) 0%,
-    rgba(0, 240, 255, 0.22) 20%,
-    rgba(14, 165, 233, 0.06) 50%,
-    rgba(255, 255, 255, 0.02) 75%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-/* Precise Input Field Transitions */
-.auth-input-field {
-  background-color: rgba(9, 11, 14, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              color 0.15s ease;
-}
-
-.auth-input-field:hover:not(:disabled):not(:focus) {
-  border-color: rgba(255, 255, 255, 0.16);
-  background-color: rgba(14, 17, 22, 0.9);
-}
-
-.auth-input-field:focus,
-.auth-input-field:focus-within {
-  border-color: rgba(0, 240, 255, 0.55) !important;
-  background-color: rgba(14, 17, 22, 0.98);
-  box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.5), 
-              0 0 20px -3px rgba(0, 240, 255, 0.2),
-              0 0 0 4px rgba(0, 240, 255, 0.08);
-}
-
-.auth-input-field.input-error {
-  border-color: rgba(244, 63, 94, 0.65) !important;
-  box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.5),
-              0 0 20px -3px rgba(244, 63, 94, 0.2),
-              0 0 0 4px rgba(244, 63, 94, 0.08) !important;
-}
-
-/* Ambient noise overlay */
-.bg-noise {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 0);
-  background-size: 28px 28px;
-}
-
-/* Button light sweep */
-.btn-sweep {
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-sweep::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    60deg,
-    transparent,
-    rgba(255, 255, 255, 0.15),
-    transparent
-  );
-  transform: rotate(25deg) translateY(-100%);
-  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
-}
-
-.btn-sweep:hover::after {
-  transform: rotate(25deg) translateY(100%);
-}
-
-/* Telemetry pulse animation */
-@keyframes pulseRing {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.3); opacity: 0; }
-  100% { transform: scale(0.95); opacity: 0; }
-}
-
-.animate-pulse-ring {
-  animation: pulseRing 2.4s cubic-bezier(0.24, 0, 0.38, 1) infinite;
-}
-
-/* Accessible reduced-motion overrides */
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

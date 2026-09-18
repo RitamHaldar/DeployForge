@@ -128,11 +128,15 @@ export function AuthInput({
           disabled={disabled}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
-          className={`auth-input-field w-full py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm text-neutral-100 placeholder-neutral-500/70 outline-none font-mono disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm text-neutral-100 placeholder-neutral-500/70 outline-none font-mono transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+            error
+              ? 'bg-rose-950/20 border border-rose-500/60 focus:border-rose-400 focus:ring-2 focus:ring-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
+              : 'bg-[#090B0E]/85 border border-white/10 hover:border-white/20 focus:border-cyan-400/70 focus:bg-[#0E1116] focus:ring-2 focus:ring-cyan-400/20 shadow-inner'
+          } ${
             resolvedLeftIcon ? 'pl-9' : 'pl-3.5'
           } ${
             showPasswordToggle || isValid || rightStaticBadge ? 'pr-10' : 'pr-3.5'
-          } ${error ? 'input-error' : ''} ${inputClassName}`}
+          } ${inputClassName}`}
         />
 
         {/* Right Accessory: Static Symbol (e.g. '@' for username) */}
