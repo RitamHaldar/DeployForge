@@ -13,16 +13,16 @@ if (!fs.existsSync(BUILD_DIR)) {
 export function ensureDockerfile(targetPath: string) {
   const dockerfilePath = path.join(targetPath, 'Dockerfile');
   if (!fs.existsSync(dockerfilePath)) {
-    const defaultDockerfile = `
-      FROM node:20-alpine
-      WORKDIR /app
-      COPY package*.json ./
-      RUN npm install
-      COPY . .
-      EXPOSE 3000
-      CMD ["npm", "start"]
-    `;
-    fs.writeFileSync(dockerfilePath, defaultDockerfile.trim());
+    const defaultDockerfile = [
+      'FROM node:20-alpine',
+      'WORKDIR /app',
+      'COPY package*.json ./',
+      'RUN npm install',
+      'COPY . .',
+      'EXPOSE 3000',
+      'CMD ["npm", "start"]'
+    ].join('\n');
+    fs.writeFileSync(dockerfilePath, defaultDockerfile);
   }
 }
 

@@ -14,6 +14,7 @@ spec:
       labels:
         app:  heal
     spec:
+      serviceAccountName: resource-manager
       containers:
       - image:  heal:latest
         imagePullPolicy: IfNotPresent
@@ -25,6 +26,9 @@ spec:
           requests:
             cpu: "250m"
             memory: "256M"
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
         env:
           - name: MONGO_URI
             valueFrom:
@@ -48,4 +52,8 @@ spec:
             port: 3000
           initialDelaySeconds: 30
           timeoutSeconds: 20
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
       restartPolicy: Always

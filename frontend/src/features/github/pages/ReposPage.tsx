@@ -12,6 +12,7 @@ import {
 import { RepoSkeleton } from '../components/RepoSkeleton';
 import { RepoEmptyState } from '../components/RepoEmptyState';
 import type { GitResponse } from '../../auth/types';
+import type { DeployPayload } from '../types';
 import {
   Rocket,
   X,
@@ -20,20 +21,38 @@ import {
   Layers,
   Sparkles,
   GitBranch,
+  AlertCircle,
+  Copy,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
 
 export function ReposPage() {
-  const { repos, loading, error, fetchRepos } = useGit();
+  const {
+    repos,
+    loading,
+    error,
+    fetchRepos,
+    deployRepo,
+    deployLoading,
+    deployError,
+    clearDeployError,
+  } = useGit();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState<FilterVisibility>('all');
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Interactive Deployment Modal State
-  const [deployModalRepo, setDeployModalRepo] = useState<GitResponse | null>(null);
-  const [isLaunchingDeploy, setIsLaunchingDeploy] = useState(false);
-  const [deploySuccess, setDeploySuccess] = useState(false);
+  // useState to store selected repository details when deploy button is clicked
+  const [selectedRepo, setSelectedRepo] = useState<GitResponse | null>(null);
+  const [deployResult, setDeployResult] = useState<{
+    success?: boolean;
+    containerId?: string;
+    status?: any;
+    message?: string;
+  } | null>(null);
+  const [copiedCloneUrl, setCopiedCloneUrl] = useState(false);
 
   // Fetch repositories on mount
   useEffect(() => {
@@ -125,22 +144,36 @@ export function ReposPage() {
     : 0;
   const privateCount = totalCount - publicCount;
 
-  // Handle Deploy Initiation
+  // Handle Deploy Initiation - store repository details in useState
   const handleDeploy = (repo: GitResponse) => {
-    setDeployModalRepo(repo);
-    setDeploySuccess(false);
+    setSelectedRepo(repo);
+    setDeployResult(null);
+    clearDeployError();
   };
 
-  const handleConfirmDeploy = () => {
-    setIsLaunchingDeploy(true);
-    setTimeout(() => {
-      setIsLaunchingDeploy(false);
-      setDeploySuccess(true);
-      setTimeout(() => {
-        setDeployModalRepo(null);
-        setDeploySuccess(false);
-      }, 2000);
-    }, 1800);
+  const handleCloseModal = () => {
+    if (!deployLoading) {
+      setSelectedRepo(null);
+      setDeployResult(null);
+      clearDeployError();
+    }
+  };
+
+  const handleConfirmDeploy = async () => {
+    if (!selectedRepo) return;
+
+    // Send the required repository details to the backend API
+    const payload: DeployPayload = {
+      repoUrl: selectedRepo.cloneUrl || `https://github.com/${selectedRepo.fullName || selectedRepo.name}.git`,
+      repoName: selectedRepo.name,
+    };
+
+    try {
+      const result = await deployRepo(payload);
+      setDeployResult(result);
+    } catch (err) {
+      console.error('Deployment execution error:', err);
+    }
   };
 
   return (
@@ -268,14 +301,14 @@ export function ReposPage() {
 
       {/* Interactive Deployment Launch Modal */}
       <AnimatePresence>
-        {deployModalRepo && (
+        {selectedRepo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => !isLaunchingDeploy && setDeployModalRepo(null)}
+              onClick={handleCloseModal}
               className="absolute inset-0 bg-black/80 backdrop-blur-md"
             />
 
@@ -300,16 +333,16 @@ export function ReposPage() {
                     <p className="text-xs font-mono text-neutral-400">
                       Target repository:{' '}
                       <span className="text-accent-cyan font-semibold">
-                        {deployModalRepo.name}
+                        {selectedRepo.name}
                       </span>
                     </p>
                   </div>
                 </div>
 
-                {!isLaunchingDeploy && (
+                {!deployLoading && (
                   <button
                     type="button"
-                    onClick={() => setDeployModalRepo(null)}
+                    onClick={handleCloseModal}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
                   >
                     <X className="w-5 h-5" />
@@ -317,17 +350,46 @@ export function ReposPage() {
                 )}
               </div>
 
-              {/* Deployment Settings Preview */}
-              <div className="space-y-3 mb-6 font-mono text-xs">
+              {/* Deployment Settings & Repo Details */}
+              <div className="space-y-3 mb-5 font-mono text-xs">
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
                   <span className="text-neutral-400 flex items-center gap-1.5">
                     <GitBranch className="w-3.5 h-3.5 text-accent-cyan" />
                     <span>Source Branch</span>
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-white font-semibold">
-                    {deployModalRepo.defaultBranch || 'main'}
+                    {selectedRepo.defaultBranch || 'main'}
                   </span>
                 </div>
+
+                {selectedRepo.cloneUrl && (
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-2">
+                    <span className="text-neutral-400 shrink-0">Clone URL</span>
+                    <div className="flex items-center gap-1.5 min-w-0 max-w-[70%]">
+                      <span className="truncate text-neutral-300 font-mono text-[11px]" title={selectedRepo.cloneUrl}>
+                        {selectedRepo.cloneUrl}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedRepo.cloneUrl) {
+                            navigator.clipboard.writeText(selectedRepo.cloneUrl);
+                            setCopiedCloneUrl(true);
+                            setTimeout(() => setCopiedCloneUrl(false), 2000);
+                          }
+                        }}
+                        className="shrink-0 p-1 rounded-md text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                        title="Copy URL"
+                      >
+                        {copiedCloneUrl ? (
+                          <Check className="w-3.5 h-3.5 text-accent-emerald" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
                   <span className="text-neutral-400 flex items-center gap-1.5">
@@ -349,35 +411,78 @@ export function ReposPage() {
                 </div>
               </div>
 
-              {/* Launch Status / Actions */}
-              {deploySuccess ? (
-                <div className="p-4 rounded-2xl bg-accent-emerald/10 border border-accent-emerald/25 flex items-center justify-center gap-2 text-accent-emerald font-mono text-xs">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Pipeline provisioned! Redirecting to Sentinel...</span>
+              {/* Error State Banner */}
+              {deployError && (
+                <div className="mb-5 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-start gap-2.5 text-red-400 font-mono text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-red-300">Deployment Error</div>
+                    <div className="text-[11px] text-red-200/80 mt-0.5">{deployError}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Success State Banner */}
+              {deployResult?.success ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-accent-emerald/10 border border-accent-emerald/25 font-mono text-xs space-y-2">
+                    <div className="flex items-center gap-2 text-accent-emerald font-semibold">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Cluster Pipeline Successfully Provisioned!</span>
+                    </div>
+                    <div className="pl-6 space-y-1 text-neutral-300 text-[11px]">
+                      <div>
+                        Container / Pod ID:{' '}
+                        <span className="text-white font-bold">{deployResult.containerId}</span>
+                      </div>
+                      <div>
+                        Status:{' '}
+                        <span className="text-accent-emerald font-semibold">
+                          {deployResult.status?.phase || (typeof deployResult.status === 'string' ? deployResult.status : 'Pending')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="px-5 py-2.5 rounded-xl text-xs font-semibold font-sans bg-white text-black hover:bg-neutral-100 transition-colors shadow-sm"
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
               ) : (
+                /* Launch Actions */
                 <div className="flex items-center justify-end gap-3">
                   <button
                     type="button"
-                    disabled={isLaunchingDeploy}
-                    onClick={() => setDeployModalRepo(null)}
-                    className="px-4 py-2 rounded-xl text-xs font-mono text-neutral-400 hover:text-white transition-colors"
+                    disabled={deployLoading}
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 rounded-xl text-xs font-mono text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
 
                   <motion.button
                     type="button"
-                    disabled={isLaunchingDeploy}
+                    disabled={deployLoading}
                     onClick={handleConfirmDeploy}
-                    whileHover={{ scale: isLaunchingDeploy ? 1 : 1.02 }}
-                    whileTap={{ scale: isLaunchingDeploy ? 1 : 0.98 }}
-                    className="btn-sweep px-5 py-2.5 rounded-xl text-xs font-semibold font-sans tracking-wide bg-white text-black hover:bg-neutral-100 flex items-center gap-2 shadow-[0_0_25px_rgba(255,255,255,0.18)]"
+                    whileHover={{ scale: deployLoading ? 1 : 1.02 }}
+                    whileTap={{ scale: deployLoading ? 1 : 0.98 }}
+                    className="btn-sweep px-5 py-2.5 rounded-xl text-xs font-semibold font-sans tracking-wide bg-white text-black hover:bg-neutral-100 flex items-center gap-2 shadow-[0_0_25px_rgba(255,255,255,0.18)] disabled:opacity-60"
                   >
-                    {isLaunchingDeploy ? (
+                    {deployLoading ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                         <span>Provisioning Cluster Replicas...</span>
+                      </>
+                    ) : deployError ? (
+                      <>
+                        <RotateCcw className="w-3.5 h-3.5 text-black" />
+                        <span>Retry Deployment</span>
                       </>
                     ) : (
                       <>

@@ -1,7 +1,5 @@
 import { coreV1Api } from "./kubernetes.js";
-
-
-export async function createPod(id: string,imageName:string) {
+export async function createPod(id, imageName) {
     const pod = {
         "metadata": {
             "name": `kubeheal-${id}`
@@ -22,57 +20,49 @@ export async function createPod(id: string,imageName:string) {
                             "cpu": "128m"
                         }
                     }
-
-
                 }
             ]
         }
-    }
+    };
     const res = await coreV1Api.createNamespacedPod({
         namespace: "default",
         body: pod
-    })
+    });
     return res;
 }
-
-export async function getPod():Promise<object> {
+export async function getPod() {
     try {
         const res = await coreV1Api.listPodForAllNamespaces();
-
-        const items = (res as any)?.items ?? (res as any)?.body?.items ?? [];
-
+        const items = res?.items ?? res?.body?.items ?? [];
         const systemNamespaces = new Set([
             'kube-system',
             'kube-public',
             'kube-node-lease',
             'ingress-nginx',
         ]);
-
         const pods = items
-            .filter((pod: any) => !systemNamespaces.has(pod.metadata?.namespace))
-            .map((pod: any) => ({
-                name: pod.metadata?.name,
-                namespace: pod.metadata?.namespace,
-                status: pod.status?.phase ?? 'Unknown',
-            }));
-
+            .filter((pod) => !systemNamespaces.has(pod.metadata?.namespace))
+            .map((pod) => ({
+            name: pod.metadata?.name,
+            namespace: pod.metadata?.namespace,
+            status: pod.status?.phase ?? 'Unknown',
+        }));
         return pods;
-    } catch (err) {
+    }
+    catch (err) {
         return { msg: "error in listing nodes", err: err };
     }
 }
-
-export async function GetLogs(pod:string):Promise<object> {
+export async function GetLogs(pod) {
     try {
         const response = await coreV1Api.readNamespacedPodLog({
             name: pod,
             namespace: 'default',
             tailLines: 100
         });
-
-        return {response};
+        return { response };
     }
     catch (err) {
-        return { msg: "error in getting logs", err: err }
+        return { msg: "error in getting logs", err: err };
     }
 }
