@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { HomePage } from "../features/home";
-import { AuthLayout, LoginPage, RegisterPage } from "../features/auth";
+import { AuthPage } from "../features/auth";
 import { ReposPage } from "../features/github";
 
 export const routes = createBrowserRouter([
@@ -21,20 +21,15 @@ export const routes = createBrowserRouter([
     element: <Navigate to="/repos" replace />,
   },
   {
-    element: <AuthLayout />,
-    children: [
-      {
-        path: "/login",
-        element: <LoginPage />,
-      },
-      {
-        path: "/register",
-        element: <RegisterPage />,
-      },
-      {
-        path: "/auth",
-        element: <Navigate to="/login" replace />,
-      },
-    ],
+    path: "/login",
+    element: <AuthPage initialMode="login" />,
+  },
+  {
+    path: "/register",
+    element: <AuthPage initialMode="register" />,
+  },
+  {
+    path: "/auth",
+    element: <Navigate to="/login" replace />,
   },
 ]);

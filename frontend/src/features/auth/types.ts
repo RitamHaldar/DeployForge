@@ -4,10 +4,24 @@ export type OAuthProvider = 'github' | 'google';
 
 export type OAuthState = 'idle' | 'connecting' | 'redirecting' | 'error';
 
+export const COUNTRY_CODES = [
+  { code: '+1', flag: '🇺🇸', name: 'US/CA' },
+  { code: '+91', flag: '🇮🇳', name: 'IN' },
+  { code: '+44', flag: '🇬🇧', name: 'UK' },
+  { code: '+49', flag: '🇩🇪', name: 'DE' },
+  { code: '+81', flag: '🇯🇵', name: 'JP' },
+  { code: '+33', flag: '🇫🇷', name: 'FR' },
+  { code: '+61', flag: '🇦🇺', name: 'AU' },
+  { code: '+65', flag: '🇸🇬', name: 'SG' },
+  { code: '+971', flag: '🇦🇪', name: 'UAE' },
+] as const;
+
 export interface AuthFormData {
   username: string;
   email: string;
   password: string;
+  mobileNumber?: string;
+  countryCode?: string;
 }
 
 export interface LoginPayload {
@@ -29,6 +43,7 @@ export interface RegisterPayload {
 export interface ValidationErrors {
   username?: string;
   email?: string;
+  mobile?: string;
   password?: string;
   general?: string;
 }

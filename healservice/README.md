@@ -201,9 +201,21 @@ Fetches the user's latest 50 repositories from GitHub using the user's saved `Gi
       "private": false,
       "cloneUrl": "https://github.com/developer/my-service.git",
       "defaultBranch": "main"
+    },
+    {
+      "id": 987654321,
+      "name": "internal-payment-gateway",
+      "fullName": "developer/internal-payment-gateway",
+      "private": true,
+      "cloneUrl": "https://github.com/developer/internal-payment-gateway.git",
+      "defaultBranch": "main"
     }
   ]
   ```
+
+> [!NOTE]
+> **Unified Repository Sync (OAuth & GitHub Apps)**:
+> The service queries both standard user repositories (`octokit.rest.repos.listForAuthenticatedUser`) and installed repositories from GitHub Apps (`octokit.rest.apps.listInstallationReposForAuthenticatedUser`). This ensures that private repositories granted to fine-grained GitHub Apps (identical to Render/Vercel architecture) and classic OAuth apps are seamlessly aggregated without duplicates.
 
 ---
 
@@ -218,24 +230,14 @@ The Docker deployment controller handles the end-to-end sandbox build and run pi
 [Sandbox Running (dynamic port)] <── docker.start() <── docker.buildImage()
 ```
 
-- **Function**: `DeployDocker(req, res)` in `src/controller/docker.controller.ts`
-- **Payload**:
-  ```json
-  {
-    "repoUrl": "https://github.com/developer/sample-api",
-    "token": "ghp_xxxxxxxxxxxxxxxxxxxx",
-    "repoName": "sample-api"
-  }
-  ```
+- **Function**: `DeployDocker(req, res)` in `src/controller/k8s.controller.ts`
 - **Execution Workflow**:
-  1. Clones repository with `--depth 1` shallow clone to `/tmp/builds/<buildId>`.
-  2. Inspects repo for an existing `Dockerfile`; if not present, generates a standardized Node.js 20 Alpine Dockerfile.
-  3. Creates a tarball stream and triggers `docker.buildImage()`.
-  4. Launches a container with resource guards:
-     - **Memory limit**: 512 MB
-     - **CPU allocation**: 1.0 CPU (`NanoCpus: 1000000000`)
-     - **Port mapping**: Container port `3000` bound to a dynamic host port (`0`).
-  5. Cleans up temporary build files in `/tmp/builds`.
+  1. Inspects user's stored `GitHubAccessToken` and converts clone URLs to authenticated endpoints via `https://x-access-token:<token>@github.com/...` (fully supporting private repositories).
+  2. Clones repository non-interactively (`GIT_TERMINAL_PROMPT=0`) with `--depth 1` shallow clone to `/tmp/builds/<buildId>`.
+  3. Inspects repo for an existing `Dockerfile`; if not present, generates a standardized Node.js 20 Alpine Dockerfile.
+  4. Creates a tarball stream and triggers `docker.buildImage()`.
+  5. Deploys namespaced Kubernetes sandbox pod `kubeheal-<buildId>` with defined CPU and memory constraints.
+  6. Safely cleans up temporary build files in `/tmp/builds`.
 - **Response**:
   ```json
   {

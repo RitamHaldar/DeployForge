@@ -3,14 +3,14 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import type { OAuthProvider, OAuthState } from '../types';
 
 interface OAuthButtonsProps {
-  mode: 'login' | 'register' | 'forgot-password';
+  mode?: 'login' | 'register' | 'forgot-password';
   providerStates: Record<OAuthProvider, OAuthState>;
   oauthError: string | null;
   onConnect: (provider: OAuthProvider) => void;
   disabled?: boolean;
 }
 
-function GitHubMark({ className = "w-4 h-4" }: { className?: string }) {
+function GitHubMark({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path
@@ -22,7 +22,7 @@ function GitHubMark({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function GoogleMark({ className = "w-4 h-4" }: { className?: string }) {
+function GoogleMark({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24">
       <path
@@ -46,18 +46,15 @@ function GoogleMark({ className = "w-4 h-4" }: { className?: string }) {
 }
 
 export function OAuthButtons({
-  mode,
   providerStates,
   oauthError,
   onConnect,
-  disabled = false
+  disabled = false,
 }: OAuthButtonsProps) {
   const isGithubLoading =
     providerStates.github === 'connecting' || providerStates.github === 'redirecting';
   const isGoogleLoading =
     providerStates.google === 'connecting' || providerStates.google === 'redirecting';
-
-  const actionText = mode === 'register' ? 'Sign up' : 'Continue';
 
   return (
     <div className="space-y-3">
@@ -68,25 +65,25 @@ export function OAuthButtons({
           type="button"
           onClick={() => onConnect('github')}
           disabled={disabled || isGithubLoading || isGoogleLoading}
-          whileHover={!disabled && !isGithubLoading ? { y: -1.5, scale: 1.01 } : {}}
+          whileHover={!disabled && !isGithubLoading ? { y: -1 } : {}}
           whileTap={!disabled && !isGithubLoading ? { scale: 0.985 } : {}}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className={`btn-sweep group relative w-full py-2.5 px-3 rounded-xl bg-white/[0.035] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/20 text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs tracking-tight shadow-sm transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(255,255,255,0.06)] ${
-            providerStates.github === 'error' ? 'border-accent-rose/50 bg-accent-rose/[0.05]' : ''
+          transition={{ duration: 0.15 }}
+          className={`relative w-full py-2.5 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.18] text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs tracking-normal shadow-sm transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 disabled:opacity-50 disabled:cursor-not-allowed ${
+            providerStates.github === 'error' ? 'border-rose-500/50 bg-rose-500/10' : ''
           }`}
-          aria-label={`${actionText} with GitHub`}
+          aria-label="Continue with GitHub"
         >
           {isGithubLoading ? (
             <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-cyan shrink-0" />
-              <span className="text-xs truncate font-mono text-neutral-300">
-                {providerStates.github === 'redirecting' ? 'Redirecting...' : 'Handshaking...'}
+              <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
+              <span className="text-xs text-neutral-300">
+                {providerStates.github === 'redirecting' ? 'Redirecting...' : 'Connecting...'}
               </span>
             </>
           ) : (
             <>
-              <GitHubMark className="w-4 h-4 text-white shrink-0 group-hover:scale-110 transition-transform duration-200" />
-              <span className="truncate">{actionText} with GitHub</span>
+              <GitHubMark className="w-4 h-4 text-white shrink-0" />
+              <span className="truncate">GitHub</span>
             </>
           )}
         </motion.button>
@@ -96,25 +93,25 @@ export function OAuthButtons({
           type="button"
           onClick={() => onConnect('google')}
           disabled={disabled || isGithubLoading || isGoogleLoading}
-          whileHover={!disabled && !isGoogleLoading ? { y: -1.5, scale: 1.01 } : {}}
+          whileHover={!disabled && !isGoogleLoading ? { y: -1 } : {}}
           whileTap={!disabled && !isGoogleLoading ? { scale: 0.985 } : {}}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className={`btn-sweep group relative w-full py-2.5 px-3 rounded-xl bg-white/[0.035] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/20 text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs tracking-tight shadow-sm transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(66,133,244,0.1)] ${
-            providerStates.google === 'error' ? 'border-accent-rose/50 bg-accent-rose/[0.05]' : ''
+          transition={{ duration: 0.15 }}
+          className={`relative w-full py-2.5 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.18] text-neutral-200 hover:text-white flex items-center justify-center gap-2.5 font-medium text-xs tracking-normal shadow-sm transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 disabled:opacity-50 disabled:cursor-not-allowed ${
+            providerStates.google === 'error' ? 'border-rose-500/50 bg-rose-500/10' : ''
           }`}
-          aria-label={`${actionText} with Google`}
+          aria-label="Continue with Google"
         >
           {isGoogleLoading ? (
             <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-cyan shrink-0" />
-              <span className="text-xs truncate font-mono text-neutral-300">
-                {providerStates.google === 'redirecting' ? 'Redirecting...' : 'Handshaking...'}
+              <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
+              <span className="text-xs text-neutral-300">
+                {providerStates.google === 'redirecting' ? 'Redirecting...' : 'Connecting...'}
               </span>
             </>
           ) : (
             <>
-              <GoogleMark className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-              <span className="truncate">{actionText} with Google</span>
+              <GoogleMark className="w-4 h-4 shrink-0" />
+              <span className="truncate">Google</span>
             </>
           )}
         </motion.button>
@@ -131,10 +128,10 @@ export function OAuthButtons({
             className="overflow-hidden"
           >
             <div
-              className="text-[11px] font-mono text-accent-rose flex items-start gap-1.5 p-2.5 rounded-xl bg-accent-rose/[0.08] border border-accent-rose/25"
+              className="text-xs text-rose-400 flex items-start gap-1.5 p-2.5 rounded-xl bg-rose-950/20 border border-rose-500/30"
               role="alert"
             >
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span className="leading-tight">{oauthError}</span>
             </div>
           </motion.div>

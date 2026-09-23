@@ -218,7 +218,7 @@ body {
     mask-composite: exclude;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.35s ease;
+    transition: opacity 0.15s ease-out;
     z-index: 10;
   }
   &:hover::before {

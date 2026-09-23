@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Search, X, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
+import { Search, X, LayoutGrid, List } from 'lucide-react';
 
 export type FilterVisibility = 'all' | 'public' | 'private';
 export type SortOption = 'name' | 'default';
@@ -27,13 +27,11 @@ export function RepoSearchBar({
   onSortChange,
   viewMode,
   onViewModeChange,
-  filteredCount,
-  totalCount,
 }: RepoSearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filterTabs: { id: FilterVisibility; label: string }[] = [
-    { id: 'all', label: 'All Repositories' },
+    { id: 'all', label: 'All' },
     { id: 'public', label: 'Public' },
     { id: 'private', label: 'Private' },
   ];
@@ -52,8 +50,8 @@ export function RepoSearchBar({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Filter repositories by name or branch..."
-          className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#090B0E]/90 border border-white/[0.09] text-xs sm:text-sm text-white placeholder:text-neutral-500 font-mono focus:outline-none focus:border-accent-cyan/60 focus:ring-1 focus:ring-accent-cyan/40 transition-all duration-200 shadow-inner"
+          placeholder="Search repositories..."
+          className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#0B0D11]/90 border border-white/[0.08] text-xs sm:text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/15 transition-all duration-200"
         />
 
         {searchQuery ? (
@@ -63,13 +61,13 @@ export function RepoSearchBar({
               onSearchChange('');
               inputRef.current?.focus();
             }}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-white"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-white transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         ) : (
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[9px] font-mono text-neutral-500 bg-white/[0.04] border border-white/[0.08] rounded-md">
+            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] text-neutral-500 bg-white/[0.04] border border-white/[0.08] rounded-md">
               /
             </kbd>
           </div>
@@ -78,13 +76,9 @@ export function RepoSearchBar({
 
       {/* Filter Tabs & Controls */}
       <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
-        {/* Match Counter Badge */}
-        <div className="hidden xl:flex items-center px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono text-neutral-400 shrink-0">
-          <span>{filteredCount} of {totalCount} repos</span>
-        </div>
-
-        {/* Visibility Filter Tabs with Animated Sliding Indicator */}
-        <div className="flex p-1 rounded-xl bg-[#090B0E]/90 border border-white/[0.08] font-mono text-xs select-none">
+        
+        {/* Segmented Filter Pills with Sliding Indicator */}
+        <div className="p-1 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center select-none">
           {filterTabs.map((tab) => {
             const isActive = visibilityFilter === tab.id;
             return (
@@ -92,15 +86,15 @@ export function RepoSearchBar({
                 key={tab.id}
                 type="button"
                 onClick={() => onVisibilityChange(tab.id)}
-                className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan ${
+                className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 ${
                   isActive ? 'text-white' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
                 {isActive && (
                   <motion.div
-                    layoutId="repo-filter-indicator"
-                    className="absolute inset-0 rounded-lg bg-white/[0.1] border border-white/15 shadow-sm"
-                    transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                    layoutId="active-repo-filter-pill"
+                    className="absolute inset-0 rounded-lg bg-white/[0.08] border border-white/10 shadow-sm"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
                 <span className="relative z-10">{tab.label}</span>
@@ -110,46 +104,46 @@ export function RepoSearchBar({
         </div>
 
         {/* Sort Selector */}
-        <button
-          type="button"
-          onClick={() => onSortChange(sortBy === 'name' ? 'default' : 'name')}
-          className={`px-3 py-2 rounded-xl text-xs font-mono border transition-colors flex items-center gap-1.5 ${
-            sortBy === 'name'
-              ? 'bg-accent-cyan/10 border-accent-cyan/30 text-accent-cyan'
-              : 'bg-[#090B0E]/90 border-white/[0.08] text-neutral-400 hover:text-white'
-          }`}
-          title="Toggle A-Z alphabetical sort"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{sortBy === 'name' ? 'A-Z' : 'Default'}</span>
-        </button>
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value as SortOption)}
+            className="px-3 py-2 rounded-xl bg-[#0B0D11]/90 border border-white/[0.08] hover:border-white/[0.15] text-xs font-medium text-neutral-300 focus:outline-none focus:border-cyan-400/50 cursor-pointer transition-colors"
+          >
+            <option value="default" className="bg-[#101216] text-white">Sort by: Default</option>
+            <option value="name" className="bg-[#101216] text-white">Sort by: Name (A-Z)</option>
+          </select>
+        </div>
 
         {/* Grid / List View Toggle */}
-        <div className="flex p-1 rounded-xl bg-[#090B0E]/90 border border-white/[0.08] text-neutral-400">
+        <div className="p-1 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center">
           <button
             type="button"
             onClick={() => onViewModeChange('grid')}
             className={`p-1.5 rounded-lg transition-colors ${
-              viewMode === 'grid' ? 'bg-white/10 text-white' : 'hover:text-white'
+              viewMode === 'grid'
+                ? 'bg-white/[0.08] text-cyan-400'
+                : 'text-neutral-400 hover:text-neutral-200'
             }`}
-            title="Grid view"
+            title="Grid View"
           >
-            <LayoutGrid className="w-3.5 h-3.5" />
+            <LayoutGrid className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={() => onViewModeChange('list')}
             className={`p-1.5 rounded-lg transition-colors ${
-              viewMode === 'list' ? 'bg-white/10 text-white' : 'hover:text-white'
+              viewMode === 'list'
+                ? 'bg-white/[0.08] text-cyan-400'
+                : 'text-neutral-400 hover:text-neutral-200'
             }`}
-            title="List view"
+            title="List View"
           >
-            <List className="w-3.5 h-3.5" />
+            <List className="w-4 h-4" />
           </button>
         </div>
 
       </div>
-
     </div>
   );
 }

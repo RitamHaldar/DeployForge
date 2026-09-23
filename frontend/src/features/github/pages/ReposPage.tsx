@@ -17,14 +17,11 @@ import {
   Rocket,
   X,
   CheckCircle2,
-  Cpu,
-  Layers,
-  Sparkles,
   GitBranch,
   AlertCircle,
   Copy,
   Check,
-  RotateCcw,
+  Plus,
 } from 'lucide-react';
 
 export function ReposPage() {
@@ -44,7 +41,7 @@ export function ReposPage() {
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // useState to store selected repository details when deploy button is clicked
+  // Deployment modal state
   const [selectedRepo, setSelectedRepo] = useState<GitResponse | null>(null);
   const [deployResult, setDeployResult] = useState<{
     success?: boolean;
@@ -59,7 +56,7 @@ export function ReposPage() {
     fetchRepos();
   }, [fetchRepos]);
 
-  // Ambient cursor glow tracking (silky smooth, 60fps, RAF lerp)
+  // Ambient cursor glow tracking
   const glowRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const glowEl = glowRef.current;
@@ -100,31 +97,31 @@ export function ReposPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
-        (r) =>
-          r.name?.toLowerCase().includes(q) ||
-          r.fullName?.toLowerCase().includes(q) ||
-          r.defaultBranch?.toLowerCase().includes(q)
+        (repo) =>
+          repo.name?.toLowerCase().includes(q) ||
+          repo.fullName?.toLowerCase().includes(q) ||
+          repo.defaultBranch?.toLowerCase().includes(q)
       );
     }
 
     // Filter by visibility
     if (visibilityFilter === 'public') {
       list = list.filter(
-        (r) =>
-          r.private === false ||
-          r.private === 'false' ||
-          String(r.private).toLowerCase() === 'public'
+        (repo) =>
+          repo.private === false ||
+          repo.private === 'false' ||
+          String(repo.private).toLowerCase() === 'public'
       );
     } else if (visibilityFilter === 'private') {
       list = list.filter(
-        (r) =>
-          r.private === true ||
-          r.private === 'true' ||
-          String(r.private).toLowerCase() === 'private'
+        (repo) =>
+          repo.private === true ||
+          repo.private === 'true' ||
+          String(repo.private).toLowerCase() === 'private'
       );
     }
 
-    // Sort
+    // Sort list
     if (sortBy === 'name') {
       list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
@@ -132,19 +129,28 @@ export function ReposPage() {
     return list;
   }, [repos, searchQuery, visibilityFilter, sortBy]);
 
-  // Statistics
+  // Aggregate counters
   const totalCount = Array.isArray(repos) ? repos.length : 0;
-  const publicCount = Array.isArray(repos)
-    ? repos.filter(
-        (r) =>
-          r.private === false ||
-          r.private === 'false' ||
-          String(r.private).toLowerCase() === 'public'
-      ).length
-    : 0;
-  const privateCount = totalCount - publicCount;
+  const publicCount = useMemo(() => {
+    if (!Array.isArray(repos)) return 0;
+    return repos.filter(
+      (r) =>
+        r.private === false ||
+        r.private === 'false' ||
+        String(r.private).toLowerCase() === 'public'
+    ).length;
+  }, [repos]);
 
-  // Handle Deploy Initiation - store repository details in useState
+  const privateCount = useMemo(() => {
+    if (!Array.isArray(repos)) return 0;
+    return repos.filter(
+      (r) =>
+        r.private === true ||
+        r.private === 'true' ||
+        String(r.private).toLowerCase() === 'private'
+    ).length;
+  }, [repos]);
+
   const handleDeploy = (repo: GitResponse) => {
     setSelectedRepo(repo);
     setDeployResult(null);
@@ -162,9 +168,10 @@ export function ReposPage() {
   const handleConfirmDeploy = async () => {
     if (!selectedRepo) return;
 
-    // Send the required repository details to the backend API
     const payload: DeployPayload = {
-      repoUrl: selectedRepo.cloneUrl || `https://github.com/${selectedRepo.fullName || selectedRepo.name}.git`,
+      repoUrl:
+        selectedRepo.cloneUrl ||
+        `https://github.com/${selectedRepo.fullName || selectedRepo.name}.git`,
       repoName: selectedRepo.name,
     };
 
@@ -177,18 +184,18 @@ export function ReposPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-brand-bg text-brand-text overflow-x-hidden selection:bg-accent-cyan/20 selection:text-accent-cyan font-sans">
+    <div className="relative min-h-screen bg-brand-bg text-brand-text overflow-x-hidden selection:bg-cyan-500/20 selection:text-cyan-400 font-sans">
       
       {/* Interactive Ambient Cursor Glow */}
       <div
         ref={glowRef}
-        className="pointer-events-none fixed top-0 left-0 w-[550px] h-[550px] rounded-full bg-gradient-to-tr from-accent-blue/10 via-accent-cyan/[0.05] to-transparent blur-3xl opacity-60 z-0 will-change-transform"
+        className="pointer-events-none fixed top-0 left-0 w-[550px] h-[550px] rounded-full bg-gradient-to-tr from-blue-500/[0.04] via-cyan-500/[0.03] to-transparent blur-3xl opacity-60 z-0 will-change-transform"
         aria-hidden="true"
       />
 
-      {/* Atmospheric Tech Grid & Vignette */}
-      <div className="fixed inset-0 bg-tech-grid opacity-60 pointer-events-none z-0" aria-hidden="true" />
-      <div className="fixed inset-0 radial-vignette pointer-events-none z-0" aria-hidden="true" />
+      {/* Atmospheric Tech Grid Pattern */}
+      <div className="fixed inset-0 bg-tech-grid opacity-35 pointer-events-none z-0" aria-hidden="true" />
+      <div className="fixed inset-0 bg-noise pointer-events-none z-0 opacity-80" aria-hidden="true" />
 
       {/* Top Header */}
       <GithubHeader
@@ -204,15 +211,11 @@ export function ReposPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-cyan/10 border border-accent-cyan/20 text-accent-cyan text-xs font-mono mb-3">
-                <Sparkles className="w-3 h-3 animate-pulse" />
-                <span>Autonomous GitOps Sync</span>
-              </div>
-              <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
-                GitHub Repositories
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                Repositories
               </h1>
-              <p className="text-xs sm:text-sm text-neutral-400 font-mono mt-1 max-w-xl">
-                Select any repository to connect autonomous self-healing microservices, live health sentinels, and zero-downtime pipelines.
+              <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-xl">
+                Deploy and manage continuous delivery pipelines from your connected GitHub account.
               </p>
             </div>
 
@@ -221,9 +224,10 @@ export function ReposPage() {
                 href="https://github.com/new"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3.5 py-2 rounded-xl text-xs font-mono font-medium text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl text-xs font-medium text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors flex items-center gap-1.5"
               >
-                <span>+ New on GitHub</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>New on GitHub</span>
               </a>
             </div>
           </div>
@@ -251,21 +255,25 @@ export function ReposPage() {
           totalCount={totalCount}
         />
 
-        {/* Repository Grid / List Display */}
-        {loading && totalCount === 0 ? (
+        {/* Repository Grid or Loading Skeletons */}
+        {loading && !repos ? (
           <RepoSkeleton count={6} viewMode={viewMode} />
-        ) : error && totalCount === 0 ? (
+        ) : error && !repos ? (
           <RepoEmptyState
             type="error"
             errorMessage={error}
             onRetry={fetchRepos}
           />
+        ) : totalCount === 0 ? (
+          <RepoEmptyState type="no-repos" onRetry={fetchRepos} />
         ) : filteredRepos.length === 0 ? (
           <RepoEmptyState
-            type={searchQuery ? 'no-results' : 'no-repos'}
+            type="no-results"
             searchQuery={searchQuery}
-            onClearSearch={() => setSearchQuery('')}
-            onRetry={fetchRepos}
+            onClearSearch={() => {
+              setSearchQuery('');
+              setVisibilityFilter('all');
+            }}
           />
         ) : (
           <motion.div
@@ -275,7 +283,7 @@ export function ReposPage() {
               visible: {
                 opacity: 1,
                 transition: {
-                  staggerChildren: 0.04,
+                  staggerChildren: 0.03,
                 },
               },
             }}
@@ -284,7 +292,7 @@ export function ReposPage() {
             className={
               viewMode === 'grid'
                 ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-                : 'flex flex-col gap-3'
+                : 'flex flex-col gap-2.5'
             }
           >
             {filteredRepos.map((repo) => (
@@ -292,6 +300,7 @@ export function ReposPage() {
                 key={repo.id || repo.name}
                 repo={repo}
                 onDeploy={handleDeploy}
+                viewMode={viewMode}
               />
             ))}
           </motion.div>
@@ -314,27 +323,24 @@ export function ReposPage() {
 
             {/* Modal Card */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-              className="relative w-full max-w-lg rounded-3xl bg-[#090B0E] border border-white/[0.12] p-6 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.9),0_0_50px_rgba(0,240,255,0.08)] overflow-hidden"
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              className="relative w-full max-w-lg rounded-2xl bg-[#0B0D11]/95 border border-white/[0.08] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl z-10"
             >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-4 mb-5 pb-4 border-b border-white/[0.08]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-accent-cyan/10 border border-accent-cyan/25 flex items-center justify-center text-accent-cyan">
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-cyan-400">
                     <Rocket className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base sm:text-lg font-bold text-white font-sans">
-                      Deploy to Cloud Cluster
-                    </h3>
-                    <p className="text-xs font-mono text-neutral-400">
-                      Target repository:{' '}
-                      <span className="text-accent-cyan font-semibold">
-                        {selectedRepo.name}
-                      </span>
+                    <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight">
+                      Deploy Application
+                    </h2>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      Deploy {selectedRepo.name} to the edge cluster.
                     </p>
                   </div>
                 </div>
@@ -345,19 +351,19 @@ export function ReposPage() {
                     onClick={handleCloseModal}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
               {/* Deployment Settings & Repo Details */}
-              <div className="space-y-3 mb-5 font-mono text-xs">
+              <div className="space-y-2.5 mb-5 text-xs">
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
                   <span className="text-neutral-400 flex items-center gap-1.5">
-                    <GitBranch className="w-3.5 h-3.5 text-accent-cyan" />
+                    <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
                     <span>Source Branch</span>
                   </span>
-                  <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-white font-semibold">
+                  <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-white font-medium">
                     {selectedRepo.defaultBranch || 'main'}
                   </span>
                 </div>
@@ -366,7 +372,7 @@ export function ReposPage() {
                   <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-2">
                     <span className="text-neutral-400 shrink-0">Clone URL</span>
                     <div className="flex items-center gap-1.5 min-w-0 max-w-[70%]">
-                      <span className="truncate text-neutral-300 font-mono text-[11px]" title={selectedRepo.cloneUrl}>
+                      <span className="truncate text-neutral-300 text-[11px]" title={selectedRepo.cloneUrl}>
                         {selectedRepo.cloneUrl}
                       </span>
                       <button
@@ -382,7 +388,7 @@ export function ReposPage() {
                         title="Copy URL"
                       >
                         {copiedCloneUrl ? (
-                          <Check className="w-3.5 h-3.5 text-accent-emerald" />
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -392,32 +398,18 @@ export function ReposPage() {
                 )}
 
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-                  <span className="text-neutral-400 flex items-center gap-1.5">
-                    <Cpu className="w-3.5 h-3.5 text-accent-emerald" />
-                    <span>Autonomous Self-Healing</span>
-                  </span>
-                  <span className="text-accent-emerald font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-pulse" />
-                    <span>Active (3.8s recovery)</span>
-                  </span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-                  <span className="text-neutral-400 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-accent-cyan" />
-                    <span>Target Kubernetes Cluster</span>
-                  </span>
-                  <span className="text-neutral-200">us-east-1-forge-cluster</span>
+                  <span className="text-neutral-400">Environment</span>
+                  <span className="text-neutral-200 font-medium">Production</span>
                 </div>
               </div>
 
               {/* Error State Banner */}
               {deployError && (
-                <div className="mb-5 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-start gap-2.5 text-red-400 font-mono text-xs">
+                <div className="mb-4 p-3 rounded-xl bg-rose-950/20 border border-rose-500/30 flex items-start gap-2 text-rose-400 text-xs">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <div className="font-semibold text-red-300">Deployment Error</div>
-                    <div className="text-[11px] text-red-200/80 mt-0.5">{deployError}</div>
+                    <div className="font-semibold text-rose-300">Deployment Failed</div>
+                    <div className="text-[11px] text-rose-200/80 mt-0.5">{deployError}</div>
                   </div>
                 </div>
               )}
@@ -425,20 +417,23 @@ export function ReposPage() {
               {/* Success State Banner */}
               {deployResult?.success ? (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-accent-emerald/10 border border-accent-emerald/25 font-mono text-xs space-y-2">
-                    <div className="flex items-center gap-2 text-accent-emerald font-semibold">
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-400 font-semibold">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Cluster Pipeline Successfully Provisioned!</span>
+                      <span>Deployment Successfully Initiated</span>
                     </div>
                     <div className="pl-6 space-y-1 text-neutral-300 text-[11px]">
                       <div>
-                        Container / Pod ID:{' '}
-                        <span className="text-white font-bold">{deployResult.containerId}</span>
+                        Container ID:{' '}
+                        <span className="text-white font-medium">{deployResult.containerId}</span>
                       </div>
                       <div>
                         Status:{' '}
-                        <span className="text-accent-emerald font-semibold">
-                          {deployResult.status?.phase || (typeof deployResult.status === 'string' ? deployResult.status : 'Pending')}
+                        <span className="text-emerald-400 font-medium">
+                          {deployResult.status?.phase ||
+                            (typeof deployResult.status === 'string'
+                              ? deployResult.status
+                              : 'Active')}
                         </span>
                       </div>
                     </div>
@@ -448,46 +443,43 @@ export function ReposPage() {
                     <button
                       type="button"
                       onClick={handleCloseModal}
-                      className="px-5 py-2.5 rounded-xl text-xs font-semibold font-sans bg-white text-black hover:bg-neutral-100 transition-colors shadow-sm"
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-100 transition-colors"
                     >
                       Done
                     </button>
                   </div>
                 </div>
               ) : (
-                /* Launch Actions */
-                <div className="flex items-center justify-end gap-3">
+                /* Modal Action Buttons */
+                <div className="flex items-center justify-end gap-3 pt-2">
                   <button
                     type="button"
-                    disabled={deployLoading}
                     onClick={handleCloseModal}
-                    className="px-4 py-2 rounded-xl text-xs font-mono text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+                    disabled={deployLoading}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
 
                   <motion.button
                     type="button"
-                    disabled={deployLoading}
                     onClick={handleConfirmDeploy}
-                    whileHover={{ scale: deployLoading ? 1 : 1.02 }}
-                    whileTap={{ scale: deployLoading ? 1 : 0.98 }}
-                    className="btn-sweep px-5 py-2.5 rounded-xl text-xs font-semibold font-sans tracking-wide bg-white text-black hover:bg-neutral-100 flex items-center gap-2 shadow-[0_0_25px_rgba(255,255,255,0.18)] disabled:opacity-60"
+                    disabled={deployLoading}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-100 flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] ${
+                      deployLoading ? 'opacity-80 cursor-wait' : ''
+                    }`}
                   >
                     {deployLoading ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                        <span>Provisioning Cluster Replicas...</span>
-                      </>
-                    ) : deployError ? (
-                      <>
-                        <RotateCcw className="w-3.5 h-3.5 text-black" />
-                        <span>Retry Deployment</span>
+                        <span>Deploying...</span>
                       </>
                     ) : (
                       <>
-                        <Rocket className="w-3.5 h-3.5 text-black fill-black" />
-                        <span>Confirm & Launch Pipeline</span>
+                        <Rocket className="w-3.5 h-3.5" />
+                        <span>Deploy Application</span>
                       </>
                     )}
                   </motion.button>
@@ -497,7 +489,6 @@ export function ReposPage() {
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

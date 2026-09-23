@@ -61,8 +61,7 @@ DeployForge/
   - `gitSlice`: Manages repository list, loading state, and error handling for connected GitHub repositories.
 - **Routing**: React Router v7 (`createBrowserRouter`):
   - `/`: High-velocity homepage with interactive self-healing lab, live pipeline stages, and eBPF laser waveform.
-  - `/login`: Dedicated Sign In page with active spring pill indicator, TLS 1.3 telemetry badge, and unified OAuth.
-  - `/register`: Dedicated Create Account page with 4-tier password strength bar, developer handle (`@`), and free-tier onboarding.
+  - `/auth` (also `/login`, `/register`): Interactive dual-mode Authentication Showcase featuring smooth tab morphing, password strength telemetry, and one-click GitHub/Google OAuth.
   - `/repos` (also `/repositories`, `/console`): Ultra-smooth, animated GitHub repository management console with 60fps spotlight cards, search/filter controls, and 1-click deployment modal.
 - **Seamless Authentication & Navigation**:
   - `useAuthForm`: Unified hook combining credential validation, Redux dispatching, and Google/GitHub OAuth handshakes in a single interface.
@@ -72,20 +71,21 @@ DeployForge/
 
 ### 🔐 Auth Microservice (`/auth`)
 - **Framework**: Express 5, TypeScript, Mongoose, Passport.js, JWT, bcryptjs.
-- **Endpoints**:
+- **Endpoints & Networking**:
   - `POST /api/auth/register`: Credential registration with bcrypt hashing.
   - `POST /api/auth/login`: Issues 24h HTTP-only secure cookie sessions with automated redirect to `/repos`.
   - `GET /api/auth/google`: Google OAuth 2.0 Single Sign-On flow.
   - `GET /api/auth/github`: GitHub OAuth authorization with repo and email scopes.
   - `GET /api/auth/get-user`: Authenticated user profile retrieval with JWT cookie verification.
+  - **Resilient DNS Resolver**: Explicit public DNS resolver fallback (`dns.setServers`) ensuring reliable SRV lookup (`querySrv`) for MongoDB Atlas clusters inside Docker and Kubernetes pods.
 
 ### 🩺 Heal & Orchestration Service (`/healservice`)
 - **Framework**: Express 5, TypeScript, `@kubernetes/client-node`, `dockerode`, `octokit`.
 - **Endpoints & Capabilities**:
-  - `GET /api/github/repos`: Fetches authenticated user repositories with branch and clone metadata using saved OAuth access tokens.
+  - `GET /api/github/repos`: Fetches authenticated user repositories with branch and clone metadata using saved OAuth access tokens. Supports both classic OAuth scopes and modern fine-grained **GitHub App** installations (similar to Render and Vercel) for full private and public repository visibility.
   - `GET /api/k8s/health`: Health probe endpoint for Kubernetes liveness/readiness probes.
   - **Kubernetes Controller**: Queries application pods across namespaces and tails real-time logs.
-  - **Docker Engine Sandbox**: Clones repos via token auth, synthesizes standardized Dockerfiles, builds images directly into Docker Engine, and runs sandboxed containers with resource limits.
+  - **Resilient Git & Docker Engine Sandbox**: Clones public and private repos non-interactively using GitHub's `x-access-token` protocol (`GIT_TERMINAL_PROMPT=0`), synthesizes standardized Dockerfiles, builds images directly into Docker Engine, and provisions Kubernetes sandbox pods.
 
 ---
 

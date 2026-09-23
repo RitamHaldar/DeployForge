@@ -42,7 +42,9 @@ export function useAuthForm(mode: AuthMode = 'login') {
   const [formData, setFormData] = useState<AuthFormData>({
     username: '',
     email: '',
-    password: ''
+    password: '',
+    mobileNumber: '',
+    countryCode: '+91',
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>('idle');
@@ -53,7 +55,7 @@ export function useAuthForm(mode: AuthMode = 'login') {
   const [activeProvider, setActiveProvider] = useState<OAuthProvider | null>(null);
   const [providerStates, setProviderStates] = useState<Record<OAuthProvider, OAuthState>>({
     github: 'idle',
-    google: 'idle'
+    google: 'idle',
   });
   const [oauthError, setOauthError] = useState<string | null>(null);
   const oauthTimeoutRef = useRef<number | null>(null);
@@ -69,14 +71,15 @@ export function useAuthForm(mode: AuthMode = 'login') {
   const passwordStrength = getPasswordStrength(formData.password);
 
   const setFieldValue = (field: keyof AuthFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: undefined, general: undefined }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    const errorKey = field === 'mobileNumber' || field === 'countryCode' ? 'mobile' : field;
+    setErrors((prev) => ({ ...prev, [errorKey]: undefined, general: undefined }));
   };
 
   const setFieldTouched = (_field: keyof AuthFormData) => {};
 
   const togglePasswordVisibility = () => {
-    setShowPassword(prev => !prev);
+    setShowPassword((prev) => !prev);
   };
 
   const clearOAuthError = () => {
@@ -89,32 +92,30 @@ export function useAuthForm(mode: AuthMode = 'login') {
     setOauthError(null);
     setErrors({});
     setActiveProvider(provider);
-    setProviderStates(prev => ({ ...prev, [provider]: 'connecting' }));
+    setProviderStates((prev) => ({ ...prev, [provider]: 'connecting' }));
 
     try {
       const result = await authApi.initiateOAuth(provider);
 
       if (result.redirectUrl) {
-        setProviderStates(prev => ({ ...prev, [provider]: 'redirecting' }));
+        setProviderStates((prev) => ({ ...prev, [provider]: 'redirecting' }));
         oauthTimeoutRef.current = window.setTimeout(() => {
           window.location.href = result.redirectUrl!;
-        }, 400);
+        }, 300);
       } else if (result.error) {
-        setProviderStates(prev => ({ ...prev, [provider]: 'error' }));
+        setProviderStates((prev) => ({ ...prev, [provider]: 'error' }));
         setOauthError(result.error);
         oauthTimeoutRef.current = window.setTimeout(() => {
-          setProviderStates(prev => ({ ...prev, [provider]: 'idle' }));
+          setProviderStates((prev) => ({ ...prev, [provider]: 'idle' }));
           setActiveProvider(null);
         }, 3200);
       }
     } catch {
-      setProviderStates(prev => ({ ...prev, [provider]: 'error' }));
-      const errorMsg = `An unexpected network error occurred while connecting to ${
-        provider === 'github' ? 'GitHub' : 'Google'
-      }.`;
+      setProviderStates((prev) => ({ ...prev, [provider]: 'error' }));
+      const errorMsg = `Unable to connect to ${provider === 'github' ? 'GitHub' : 'Google'}. Please try again.`;
       setOauthError(errorMsg);
       oauthTimeoutRef.current = window.setTimeout(() => {
-        setProviderStates(prev => ({ ...prev, [provider]: 'idle' }));
+        setProviderStates((prev) => ({ ...prev, [provider]: 'idle' }));
         setActiveProvider(null);
       }, 3200);
     }
@@ -129,12 +130,29 @@ export function useAuthForm(mode: AuthMode = 'login') {
       } else if (formData.username.trim().length < 3) {
         newErrors.username = 'Username must be at least 3 characters.';
       }
-    }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email address is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = 'Please enter a valid email address.';
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email address is required.';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        newErrors.email = 'Please enter a valid email address.';
+      }
+
+      const digitsOnly = (formData.mobileNumber || '').replace(/\D/g, '');
+      if (!digitsOnly) {
+        newErrors.mobile = 'Mobile number is required.';
+      } else if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+        newErrors.mobile = 'Please enter a valid phone number (7-15 digits).';
+      }
+    } else if (mode === 'login') {
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email or username is required.';
+      }
+    } else {
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email address is required.';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        newErrors.email = 'Please enter a valid email address.';
+      }
     }
 
     if (mode !== 'forgot-password') {
@@ -160,12 +178,29 @@ export function useAuthForm(mode: AuthMode = 'login') {
     setOauthError(null);
 
     try {
-      const res =
-        mode === 'login'
-          ? await authApi.login({ email: formData.email, password: formData.password })
-          : mode === 'register'
-          ? await authApi.register(formData)
-          : await authApi.requestPasswordReset(formData.email);
+      let res;
+      if (mode === 'login') {
+        const identifier = formData.email.trim();
+        const isEmailFormat = identifier.includes('@');
+        res = await authApi.login({
+          email: isEmailFormat ? identifier : undefined,
+          username: !isEmailFormat ? identifier : undefined,
+          password: formData.password,
+        });
+      } else if (mode === 'register') {
+        const rawDigits = (formData.mobileNumber || '').replace(/\D/g, '');
+        res = await authApi.register({
+          username: formData.username.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+          mobile: {
+            Number: rawDigits,
+            CountryCode: formData.countryCode || '+1',
+          },
+        });
+      } else {
+        res = await authApi.requestPasswordReset(formData.email.trim());
+      }
 
       if (res.success) {
         if (res.user) {
@@ -181,9 +216,9 @@ export function useAuthForm(mode: AuthMode = 'login') {
           if (onSuccessRedirect && res.redirectUrl) {
             onSuccessRedirect(res.redirectUrl);
           }
-        }, 500);
+        }, 400);
       } else {
-        const errorMsg = res.error?.message || 'Authentication failed.';
+        const errorMsg = res.error?.message || 'Authentication failed. Please verify your details.';
         dispatch(setError(res.error || errorMsg));
         setSubmitStatus('error');
         setErrors({ general: errorMsg });

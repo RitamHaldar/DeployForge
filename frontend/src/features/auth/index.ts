@@ -1,14 +1,11 @@
-export { LoginPage } from './pages/LoginPage';
-export { RegisterPage } from './pages/RegisterPage';
-export { AuthLayout } from './pages/AuthLayout';
-export { AuthCard } from './components/AuthCard';
+export { AuthPage } from './pages/AuthPage';
 export { AuthInput } from './components/AuthInput';
 export { OAuthButtons } from './components/OAuthButtons';
 export { PasswordStrengthBar } from './components/PasswordStrengthBar';
 export { AuthHeader } from './components/AuthHeader';
 export { AuthFooter } from './components/AuthFooter';
+export { AuthShowcase } from './components/AuthShowcase';
 export { AmbientParticleCanvas } from './components/AmbientParticleCanvas';
-export { InfrastructureSentinel } from './components/InfrastructureSentinel';
 export { useAuthForm } from './hooks/useAuthForm';
 export { authApi } from './services/authApi';
 export * from './types';
