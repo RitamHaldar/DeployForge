@@ -122,6 +122,19 @@ DeployForge features an immersive, cybernetic developer aesthetic built on pure 
 
 ---
 
+### 3. Repository Console & Deployment Modal (`src/features/github`)
+* **Repository Console (`ReposPage.tsx`)**:
+  - High-performance, animated repository view with interactive search query parsing and visibility filters (`all`, `public`, `private`).
+  - 60fps radial mouse-tracking spotlight cards with star counters, primary language badges, and branch metadata.
+  - Integrated GitHub App and OAuth repository synchronization.
+* **Autonomous Deployment Modal**:
+  - **Source Branch & Clone URL**: Real-time git metadata display with 1-click clipboard copy feedback.
+  - **Monorepo Subfolder Targeting**: Dedicated **Root Directory / Subfolder** configuration input allowing developers to deploy microservices housed within monorepos (e.g., `/Backend`, `client/`, or root).
+  - **Reactive Deployment Pipeline**: Triggers `POST /api/k8s/deploy` with payload `{ repoUrl, repoName, folderpath }`.
+  - **Telemetry & Status Monitor**: Instant feedback detailing the provisioned container ID (`deployforge-pod-<id>`) and deployment phase.
+
+---
+
 ## 🛠️ Getting Started
 
 ### Prerequisites

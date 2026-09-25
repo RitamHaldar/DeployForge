@@ -11,6 +11,9 @@ if (!fs.existsSync(BUILD_DIR)) {
 }
 
 export function ensureDockerfile(targetPath: string) {
+  if (!fs.existsSync(targetPath)) {
+    fs.mkdirSync(targetPath, { recursive: true });
+  }
   const dockerfilePath = path.join(targetPath, 'Dockerfile');
   if (!fs.existsSync(dockerfilePath)) {
     const defaultDockerfile = [

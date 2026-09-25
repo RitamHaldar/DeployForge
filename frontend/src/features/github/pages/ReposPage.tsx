@@ -22,6 +22,7 @@ import {
   Copy,
   Check,
   Plus,
+  Folder,
 } from 'lucide-react';
 
 export function ReposPage() {
@@ -50,6 +51,7 @@ export function ReposPage() {
     message?: string;
   } | null>(null);
   const [copiedCloneUrl, setCopiedCloneUrl] = useState(false);
+  const [folderPath, setFolderPath] = useState('');
 
   // Fetch repositories on mount
   useEffect(() => {
@@ -161,6 +163,7 @@ export function ReposPage() {
     if (!deployLoading) {
       setSelectedRepo(null);
       setDeployResult(null);
+      setFolderPath('');
       clearDeployError();
     }
   };
@@ -173,6 +176,7 @@ export function ReposPage() {
         selectedRepo.cloneUrl ||
         `https://github.com/${selectedRepo.fullName || selectedRepo.name}.git`,
       repoName: selectedRepo.name,
+      folderpath: folderPath.trim() || undefined,
     };
 
     try {
@@ -396,6 +400,28 @@ export function ReposPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Target Subfolder / Root Directory */}
+                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400 flex items-center gap-1.5">
+                      <Folder className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Root Directory / Subfolder</span>
+                    </span>
+                    <span className="text-[10px] text-neutral-500 font-mono">Optional</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={folderPath}
+                    onChange={(e) => setFolderPath(e.target.value)}
+                    disabled={deployLoading}
+                    placeholder="e.g. /Backend, backend, or empty for root"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/[0.08] text-white placeholder-neutral-500 text-xs focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
+                  />
+                  <p className="text-[10px] text-neutral-500">
+                    If your repository contains multiple folders (e.g. frontend & backend), specify the target directory where the Dockerfile will be created.
+                  </p>
+                </div>
 
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
                   <span className="text-neutral-400">Environment</span>

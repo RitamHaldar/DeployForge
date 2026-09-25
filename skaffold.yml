@@ -13,6 +13,10 @@ build:
       context: healservice
       docker:
         dockerfile: Dockerfile
+    - image: router
+      context: router
+      docker:
+        dockerfile: Dockerfile
 manifests:
   rawYaml:
     - k8s/rabac.yml
@@ -21,4 +25,6 @@ manifests:
     - k8s/auth-service.yml
     - k8s/heal-deployment.yml
     - k8s/heal-service.yml
+    - k8s/router-deployment.yml
+    - k8s/router-service.yml
     - k8s/ingress.yml

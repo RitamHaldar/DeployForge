@@ -219,32 +219,65 @@ Fetches the user's latest 50 repositories from GitHub using the user's saved `Gi
 
 ---
 
-### 3. Docker Container Deployment Engine
+### 3. Kubernetes & Docker Container Deployment Engine
 
-The Docker deployment controller handles the end-to-end sandbox build and run pipeline:
+The deployment controller handles end-to-end repository cloning, subfolder resolution, Docker build, and Kubernetes pod/service orchestration:
 
 ```
-[Git Repo URL + Token] ──> simpleGit.clone() ──> ensureDockerfile() ──> tar-fs.pack()
-                                                                              │
-                                                                              ▼
-[Sandbox Running (dynamic port)] <── docker.start() <── docker.buildImage()
+[Git Repo URL + Token] ──> simpleGit.clone()
+                                    │
+    [folderpath (e.g. /Backend)] ──> resolve targetDir ──> ensureDockerfile()
+                                                                 │
+                                                            tar-fs.pack()
+                                                                 │
+                                                                 ▼
+[delpoyforge-service-<id>] <── createPod() & CreateService() <── docker.buildImage()
+            │
+            ▼
+[Preview URL: http://<id>.preview.localhost]
 ```
 
-- **Function**: `DeployDocker(req, res)` in `src/controller/k8s.controller.ts`
+- **Endpoint**: `POST /api/k8s/deploy`
+- **Authentication**: Requires valid JWT token in cookies (`VerifyUser` middleware).
+- **Request Body**:
+  ```json
+  {
+    "repoUrl": "https://github.com/developer/my-monorepo.git",
+    "repoName": "my-monorepo",
+    "folderpath": "/Backend"
+  }
+  ```
+  *(Note: `folderpath` is optional. If omitted or left empty, the repository root is deployed.)*
+
 - **Execution Workflow**:
-  1. Inspects user's stored `GitHubAccessToken` and converts clone URLs to authenticated endpoints via `https://x-access-token:<token>@github.com/...` (fully supporting private repositories).
-  2. Clones repository non-interactively (`GIT_TERMINAL_PROMPT=0`) with `--depth 1` shallow clone to `/tmp/builds/<buildId>`.
-  3. Inspects repo for an existing `Dockerfile`; if not present, generates a standardized Node.js 20 Alpine Dockerfile.
-  4. Creates a tarball stream and triggers `docker.buildImage()`.
-  5. Deploys namespaced Kubernetes sandbox pod `kubeheal-<buildId>` with defined CPU and memory constraints.
-  6. Safely cleans up temporary build files in `/tmp/builds`.
-- **Response**:
+  1. **Authentication & Token Retrieval**: Retrieves the user's `GitHubAccessToken` from MongoDB and builds an authenticated URL (`https://<token>@github.com/...`).
+  2. **Shallow Clone**: Clones the repository non-interactively with `--depth 1` into an isolated build directory `/tmp/builds/<buildId>`.
+  3. **Subfolder & Monorepo Support**:
+     - Strips leading/trailing slashes (e.g., `/Backend` ➔ `Backend`).
+     - Enforces security checks preventing path traversal outside the cloned directory (`targetDir.startsWith(workspacePath)`).
+     - Performs case-insensitive directory resolution to handle capitalization discrepancies (`/backend` vs `/Backend`).
+  4. **Dockerfile Synthesis**:
+     - Inspects the target directory for an existing `Dockerfile`.
+     - If absent, generates an optimized Node.js 20 Alpine `Dockerfile` directly inside the subfolder.
+  5. **Docker Build**:
+     - Archives the target subfolder via `tar-fs.pack()` so the build context and `package.json` are properly scoped.
+     - Builds the Docker image `sandbox-<buildId>`.
+  6. **Kubernetes Orchestration**:
+     - Schedules pod `deployforge-pod-<id>` with production-grade resource allocations:
+       - Memory Limits: `512Mi` (requests `256Mi`) to eliminate Node.js `OOMKilled` crashes.
+       - CPU Limits: `500m` (requests `250m`).
+     - Provisions a ClusterIP Service `delpoyforge-service-<id>` mapping port `80` to container port `3000`.
+     - Returns a direct preview URL: `http://<buildId>.preview.localhost`.
+  7. **Build Cleanup**: Safely cleans up temporary clone files from `/tmp/builds/<buildId>`.
+
+- **Response (`200 OK`)**:
   ```json
   {
     "success": true,
-    "containerId": "a1b2c3d4e5f6...",
-    "assignedPort": "49153",
-    "status": "running"
+    "containerId": "deployforge-pod-d11b0449-b2ab-47fa-8bfa-6a7a27a72de4",
+    "status": "Pending",
+    "message": "Deployment pod deployforge-pod-d11b0449-b2ab-47fa-8bfa-6a7a27a72de4 provisioned successfully",
+    "previewurl": "http://d11b0449-b2ab-47fa-8bfa-6a7a27a72de4.preview.localhost"
   }
   ```
 

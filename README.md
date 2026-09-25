@@ -29,7 +29,7 @@ DeployForge/
 │   ├── src/App/              # React Router v7 routes & Redux Toolkit store (auth & git reducers)
 │   ├── src/features/home/    # Self-healing simulator, eBPF telemetry, interactive pipeline & dynamic Navbar
 │   ├── src/features/auth/    # Dedicated /login & /register pages with unified useAuthForm & OAuth
-│   └── src/features/github/  # Fluid, lag-free /repos dashboard with 60fps spotlight cards & deploy modal
+│   └── src/features/github/  # /repos dashboard with subfolder selection & 1-click cloud deployment modal
 ├── auth/                     # Identity & Session Gateway Microservice (Port 3000)
 │   ├── src/controller/       # Register, Login, Google OAuth, GitHub OAuth, and GetUser controllers
 │   ├── src/middleware/       # JWT session verification middleware (supports JWT_TOKEN & JWT_SECRET)
@@ -37,17 +37,22 @@ DeployForge/
 │   └── src/routes/           # Express 5 authentication routes (/api/auth)
 ├── healservice/              # Orchestration, Docker Sandbox & K8s Controller Engine (Port 3000)
 │   ├── src/k8s/              # Kubernetes Client Node SDK queries, pod logs, & node monitoring
-│   ├── src/github/           # On-demand Git clone, tar streaming, & Dockerfile synthesis
+│   ├── src/github/           # On-demand Git clone, subfolder Dockerfile synthesis, & tar streaming
 │   ├── src/routes/           # /api/k8s and /api/github/repos routes
-│   └── src/controller/       # GitHub repository sync & dynamic container deployments
+│   └── src/controller/       # Monorepo subfolder resolution, image build & pod/service deployment
+├── router/                   # Dynamic Multi-Tenant Reverse Proxy & Preview Gateway (Port 3000)
+│   ├── src/app.ts            # Host header parsing (<id>.preview.localhost) & dynamic proxy pool
+│   └── server.ts             # Express server entrypoint (port 3000)
 ├── k8s/                      # Production & Staging Kubernetes Manifests
 │   ├── auth-deployment.yml   # Auth microservice deployment
 │   ├── auth-service.yml      # Auth ClusterIP service (port 80 -> 3000)
 │   ├── heal-deployment.yml   # Heal microservice deployment
 │   ├── heal-service.yml      # Heal ClusterIP service (port 80 -> 3000)
-│   ├── ingress.yml           # NGINX Ingress rules (/api/auth, /api/github, /api/k8s)
+│   ├── router-deployment.yml # Dynamic reverse proxy router deployment
+│   ├── router-service.yml    # Router ClusterIP service (port 80 -> 3000)
+│   ├── ingress.yml           # NGINX Ingress rules (wildcard *.preview.localhost, /api/auth, /api/github, /api/k8s)
 │   └── secrets.yml           # Cluster secrets (MongoDB URI, JWT tokens, OAuth credentials)
-└── skaffold.yml              # Skaffold continuous development & container build pipeline
+└── skaffold.yml              # Skaffold continuous development & multi-container build pipeline
 ```
 
 ---
@@ -62,7 +67,7 @@ DeployForge/
 - **Routing**: React Router v7 (`createBrowserRouter`):
   - `/`: High-velocity homepage with interactive self-healing lab, live pipeline stages, and eBPF laser waveform.
   - `/auth` (also `/login`, `/register`): Interactive dual-mode Authentication Showcase featuring smooth tab morphing, password strength telemetry, and one-click GitHub/Google OAuth.
-  - `/repos` (also `/repositories`, `/console`): Ultra-smooth, animated GitHub repository management console with 60fps spotlight cards, search/filter controls, and 1-click deployment modal.
+  - `/repos` (also `/repositories`, `/console`): Animated GitHub repository management console with 60fps spotlight cards, search/filter controls, and a comprehensive deployment modal supporting root or subfolder/monorepo targeting (e.g. `/Backend`).
 - **Seamless Authentication & Navigation**:
   - `useAuthForm`: Unified hook combining credential validation, Redux dispatching, and Google/GitHub OAuth handshakes in a single interface.
   - **Dynamic Navbar**: Automatically detects login state to display the **"Repositories"** launcher, authenticated user handle, and quick sign-out.
@@ -82,10 +87,18 @@ DeployForge/
 ### 🩺 Heal & Orchestration Service (`/healservice`)
 - **Framework**: Express 5, TypeScript, `@kubernetes/client-node`, `dockerode`, `octokit`.
 - **Endpoints & Capabilities**:
-  - `GET /api/github/repos`: Fetches authenticated user repositories with branch and clone metadata using saved OAuth access tokens. Supports both classic OAuth scopes and modern fine-grained **GitHub App** installations (similar to Render and Vercel) for full private and public repository visibility.
+  - `GET /api/github/repos`: Fetches authenticated user repositories with branch and clone metadata using saved OAuth access tokens. Supports both classic OAuth scopes and fine-grained **GitHub App** installations.
+  - `POST /api/k8s/deploy`: Orchestrates monorepo subfolder resolution, shallow clone, Dockerfile synthesis, Docker image build, `deployforge-pod-<id>` creation (with 512Mi memory quotas), and `delpoyforge-service-<id>` mapping on port 3000. Returns a live preview URL (`http://<id>.preview.localhost`).
   - `GET /api/k8s/health`: Health probe endpoint for Kubernetes liveness/readiness probes.
   - **Kubernetes Controller**: Queries application pods across namespaces and tails real-time logs.
-  - **Resilient Git & Docker Engine Sandbox**: Clones public and private repos non-interactively using GitHub's `x-access-token` protocol (`GIT_TERMINAL_PROMPT=0`), synthesizes standardized Dockerfiles, builds images directly into Docker Engine, and provisions Kubernetes sandbox pods.
+
+### 🌐 Router & Preview Gateway (`/router`)
+- **Framework**: Express 5, TypeScript, `http-proxy-middleware`, CORS, Morgan.
+- **Dynamic Host Routing**:
+  - Parses incoming `Host` headers formatted as `<sandboxId>.preview.localhost`.
+  - Instantiates cached, low-latency reverse proxies streaming to internal Kubernetes services (`delpoyforge-service-<sandboxId>:80`).
+  - Built-in WebSocket upgrade support (`ws: true`) for live Hot Module Reloading (Vite/Next.js) and real-time socket connections.
+  - Probes at `/api/router/health` and `/api/router/ready`.
 
 ---
 
@@ -93,13 +106,14 @@ DeployForge/
 
 DeployForge routes all microservices through a unified NGINX Ingress Controller:
 
-| Path Prefix | Target Service | Container Port | Service Name |
+| Host / Path Pattern | Target Service | Container Port | Description |
 | :--- | :--- | :--- | :--- |
-| **`/api/auth`** | `auth-service` | `3000` | `auth` |
-| **`/api/github`** | `heal-service` | `3000` | `heal` |
-| **`/api/k8s`** | `heal-service` | `3000` | `heal` |
+| **`*.preview.localhost`** | `router-service` | `3000` | Dynamic subdomain router for deployed sandbox previews |
+| **`/api/auth`** | `auth-service` | `3000` | Authentication, sessions, & OAuth callbacks |
+| **`/api/github`** | `heal-service` | `3000` | GitHub repository discovery & sync |
+| **`/api/k8s`** | `heal-service` | `3000` | Pod scheduling, logs streaming, & deployment trigger |
 
-`skaffold.yml` continuously monitors source files, builds local Docker containers, and deploys manifests (`auth`, `heal`, `secrets`, and `ingress`) to your local Kubernetes cluster.
+`skaffold.yml` continuously monitors source files, builds local Docker containers, and deploys manifests (`auth`, `heal`, `router`, `secrets`, and `ingress`) to your local Kubernetes cluster.
 
 ---
 
@@ -142,7 +156,15 @@ npm run dev
 # Running on http://localhost:3000
 ```
 
-#### 3. Start the Frontend
+#### 3. Start the Router Service
+```bash
+cd router
+npm install
+npm run dev
+# Running on http://localhost:3000
+```
+
+#### 4. Start the Frontend
 ```bash
 cd frontend
 npm install
@@ -159,6 +181,7 @@ npm run dev
 | **`frontend`** | `npm run dev` | `npm run build` | `npm run preview` |
 | **`auth`** | `npm run dev` | `npm run build` | `npm start` |
 | **`healservice`** | `npm run dev` | `npm run build` | `npm start` |
+| **`router`** | `npm run dev` | `npm run build` | `npm start` |
 
 ---
 

@@ -8,6 +8,8 @@ import { docker, ensureDockerfile } from '../github/clone.js';
 import { createPod } from '../k8s/pod.js';
 import { AuthRequest } from "../middleware/user.middleware.js";
 import { userModel } from "../models/user.model.js";
+import { v4 as uuidv4 } from 'uuid';
+import { CreateService } from "../k8s/service.js";
 const BUILD_DIR = path.resolve('/tmp/builds');
 export async function getNodesController(req:Request,res:Response):Promise<object>{
     try{
@@ -48,6 +50,7 @@ export async function DeployDocker(req: AuthRequest, res: Response) {
 
     const repoUrl = req.body.repoUrl || req.body.payload?.repoUrl;
     const repoName = req.body.repoName || req.body.payload?.repoName;
+    const folderpath = req.body.folderpath || req.body.payload?.folderpath;
 
     if (!repoUrl || !repoName) {
         return res.status(400).json({ error: "Both repoUrl and repoName are required for deployment" });
@@ -61,16 +64,40 @@ export async function DeployDocker(req: AuthRequest, res: Response) {
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, '-')
         .replace(/^-+|-+$/g, '')
-        .slice(0, 30) || 'repo';
-    const buildId = `${sanitizedRepoName}-${Date.now()}`;
+        .slice(0, 16) || 'repo';
+    const buildId = uuidv4();
     const workspacePath = path.join(BUILD_DIR, buildId);
 
     try {
+
         const authenticatedUrl = repoUrl.replace('https://', `https://${token.GitHubAccessToken}@`);
         const git = simpleGit();
         await git.clone(authenticatedUrl, workspacePath, ['--depth', '1']);
-        ensureDockerfile(workspacePath);
-        const tarStream = tar.pack(workspacePath);
+
+        const rawFolder = typeof folderpath === 'string' ? folderpath.trim() : '';
+        const cleanFolder = rawFolder.replace(/^(\.[\/\\]+|[\/\\]+)/, '').replace(/[\/\\]+$/, '');
+        const targetDir = cleanFolder ? path.resolve(workspacePath, cleanFolder) : workspacePath;
+
+        if (!targetDir.startsWith(workspacePath)) {
+            return res.status(400).json({ error: "Invalid folder path: path traversal detected" });
+        }
+
+        let buildContext = targetDir;
+        if (cleanFolder && !fs.existsSync(buildContext)) {
+            try {
+                const entries = fs.readdirSync(workspacePath);
+                const match = entries.find((e) => e.toLowerCase() === cleanFolder.toLowerCase());
+                if (match) {
+                    buildContext = path.join(workspacePath, match);
+                } else {
+                    fs.mkdirSync(buildContext, { recursive: true });
+                }
+            } catch {
+                fs.mkdirSync(buildContext, { recursive: true });
+            }
+        }
+        ensureDockerfile(buildContext);
+        const tarStream = tar.pack(buildContext);
         const imageName = `sandbox-${buildId}`;
         const buildStream = await docker.buildImage(tarStream as unknown as NodeJS.ReadableStream, {
             t: imageName,
@@ -84,6 +111,7 @@ export async function DeployDocker(req: AuthRequest, res: Response) {
         });
 
         const pod = await createPod(buildId, imageName);
+        const service = await CreateService(buildId);
         const containerId = (pod as any)?.metadata?.name ?? (pod as any)?.body?.metadata?.name ?? `kubeheal-${buildId}`;
         const status = (pod as any)?.status ?? (pod as any)?.body?.status ?? 'Pending';
 
@@ -92,6 +120,7 @@ export async function DeployDocker(req: AuthRequest, res: Response) {
             containerId,
             status,
             message: `Deployment pod ${containerId} provisioned successfully`,
+            previewurl: `http://${buildId}.preview.localhost`
         });
     } catch (error: any) {
         console.error("Error in DeployDocker:", error);

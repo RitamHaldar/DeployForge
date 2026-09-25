@@ -4,7 +4,7 @@ import { coreV1Api } from "./kubernetes.js";
 export async function createPod(id: string, imageName: string) {
     const pod = {
         "metadata": {
-            "name": `kubeheal-${id}`,
+            "name": `deployforge-pod-${id}`,
             "labels": {
                 "kubehealId": id
             }
@@ -17,12 +17,12 @@ export async function createPod(id: string, imageName: string) {
                     "imagePullPolicy": "IfNotPresent",
                     "resources": {
                         "limits": {
-                            "memory": "128Mi",
-                            "cpu": "256m"
+                            "memory": "512Mi",
+                            "cpu": "500m"
                         },
                         "requests": {
-                            "memory": "64Mi",
-                            "cpu": "128m"
+                            "memory": "256Mi",
+                            "cpu": "250m"
                         }
                     }
 
