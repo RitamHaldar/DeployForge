@@ -3,7 +3,7 @@ import { coreV1Api } from "./kubernetes.js";
 export async function CreateService(id: string):Promise<object>{
     const serviceManifest = {
         "metadata": {
-            "name": `delpoyforge-service-${id}`,
+            "name": `deployforge-service-${id}`,
             "labels": {
                 "app": "kubeheal-service",
                 "kubehealId": id
@@ -17,13 +17,13 @@ export async function CreateService(id: string):Promise<object>{
                 {
                     "name": "http",
                     "port": 80,
-                    "targetPort": 3000,
+                    "targetPort": 5173,
                     "protocol": "TCP"
                 },
                 {
                     "name": "agent-http",
-                    "port": 3000,
-                    "targetPort": 3000,
+                    "port": 4000,
+                    "targetPort": 4000,
                     "protocol": "TCP"
                 }
             ],
@@ -40,7 +40,7 @@ export async function CreateService(id: string):Promise<object>{
 export async function DeleteService(id:string):Promise<object>{
     const res=await coreV1Api.deleteNamespacedService({
         namespace:"default",
-        name: `delpoyforge-service-${id}`,
+        name: `deployforge-service-${id}`,
         gracePeriodSeconds:0
     })
     return res;

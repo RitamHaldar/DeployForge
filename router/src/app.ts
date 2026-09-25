@@ -20,11 +20,11 @@ app.get("/api/router/ready", (_req: Request, res: Response) => {
 });
 
 const proxies: Record<string, ReturnType<typeof createProxyMiddleware>> = {};
-
+let agentproxies: Record<string, ReturnType<typeof createProxyMiddleware>> = {}
 function getOrCreateProxy(sandboxId: string) {
     if (!proxies[sandboxId]) {
         proxies[sandboxId] = createProxyMiddleware({
-            target: `http://delpoyforge-service-${sandboxId}`,
+            target: `http://deployforge-service-${sandboxId}`,
             changeOrigin: true,
             ws: true
         });
@@ -32,6 +32,16 @@ function getOrCreateProxy(sandboxId: string) {
     return proxies[sandboxId];
 }
 
+function getOrCreateAgentProxy(sandboxId: string) {
+    if (!agentproxies[sandboxId]) {
+        agentproxies[sandboxId] = createProxyMiddleware({
+            target: `http://deployforge-service-${sandboxId}:4000`,
+            changeOrigin: true,
+            ws: true
+        });
+    }
+    return agentproxies[sandboxId];
+}
 app.use((req: Request, res: Response, next: NextFunction) => {
     const host = req.headers.host || "";
     const sandboxId = host.split(".")[0]?.trim();
@@ -41,6 +51,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     }
     if (type === "preview") {
         return getOrCreateProxy(sandboxId)(req, res, next);
+    }
+    else if(type === "agent"){
+        return getOrCreateAgentProxy(sandboxId)(req, res, next);
     }
     return res.status(404).json({ error: "Invalid preview host" });
 });

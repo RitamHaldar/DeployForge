@@ -120,7 +120,8 @@ export async function DeployDocker(req: AuthRequest, res: Response) {
             containerId,
             status,
             message: `Deployment pod ${containerId} provisioned successfully`,
-            previewurl: `http://${buildId}.preview.localhost`
+            previewurl: `http://${buildId}.preview.localhost`,
+            agenturl: `http://${buildId}.agent.localhost`
         });
     } catch (error: any) {
         console.error("Error in DeployDocker:", error);

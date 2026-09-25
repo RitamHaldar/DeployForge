@@ -3,7 +3,7 @@
 
 <div align="center">
 
-![DeployForge Monorepo](https://img.shields.io/badge/DeployForge-v2.4_LTS-00F0FF?style=for-the-badge&logo=shield&logoColor=black)
+![DeployForge Monorepo](https://img.shields.io/badge/DeployForge-v2.5_LTS-00F0FF?style=for-the-badge&logo=shield&logoColor=black)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-Native-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Engine_API-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Redux Toolkit](https://img.shields.io/badge/Redux_Toolkit-State-764ABC?style=for-the-badge&logo=redux&logoColor=white)
@@ -11,9 +11,9 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 
 **Deploy with confidence. Sleep through incidents.**  
-DeployForge continuously monitors container workloads, isolates anomalies in milliseconds, and orchestrates zero-downtime hot-standby promotion.
+DeployForge continuously monitors container workloads, isolates anomalies in milliseconds, orchestrates zero-downtime hot-standby promotion, and provides live in-pod sidecar developer agents.
 
-[Architecture](#-monorepo-architecture) • [Frontend Portal](#-frontend-portal-frontend) • [Auth Microservice](#-auth-microservice-auth) • [Heal Service](#-heal--orchestration-service-healservice) • [Kubernetes & Skaffold](#-kubernetes--skaffold-orchestration) • [Local Quickstart](#-local-development-quickstart)
+[Architecture](#-monorepo-architecture) • [Frontend Portal](#-frontend-portal-frontend) • [Auth Microservice](#-auth-microservice-auth) • [Heal Service](#-heal--orchestration-service-healservice) • [Router Gateway](#-router--preview-gateway-router) • [Agent Sidecar](#-in-pod-agent-sidecar-agent) • [Kubernetes & Skaffold](#-kubernetes--skaffold-orchestration) • [Local Quickstart](#-local-development-quickstart)
 
 </div>
 
@@ -21,7 +21,7 @@ DeployForge continuously monitors container workloads, isolates anomalies in mil
 
 ## 🏛️ Monorepo Architecture
 
-DeployForge is organized as a modular microservices platform with unified ingress and reactive state management:
+DeployForge is organized as a modular microservices platform with unified ingress, dynamic routing, and in-pod sidecar agents:
 
 ```text
 DeployForge/
@@ -36,13 +36,17 @@ DeployForge/
 │   ├── src/model/            # Mongoose User model with bcrypt password hashing
 │   └── src/routes/           # Express 5 authentication routes (/api/auth)
 ├── healservice/              # Orchestration, Docker Sandbox & K8s Controller Engine (Port 3000)
-│   ├── src/k8s/              # Kubernetes Client Node SDK queries, pod logs, & node monitoring
+│   ├── src/k8s/              # Kubernetes Node SDK client, multi-container pod builder, & service provisioner
 │   ├── src/github/           # On-demand Git clone, subfolder Dockerfile synthesis, & tar streaming
 │   ├── src/routes/           # /api/k8s and /api/github/repos routes
 │   └── src/controller/       # Monorepo subfolder resolution, image build & pod/service deployment
 ├── router/                   # Dynamic Multi-Tenant Reverse Proxy & Preview Gateway (Port 3000)
-│   ├── src/app.ts            # Host header parsing (<id>.preview.localhost) & dynamic proxy pool
+│   ├── src/app.ts            # Host header routing (*.preview.localhost & *.agent.localhost) & proxy cache
 │   └── server.ts             # Express server entrypoint (port 3000)
+├── agent/                    # In-Pod Sidecar Developer Agent Microservice (Port 4000)
+│   ├── src/app.ts            # Express 5 app with recursive workspace file inspection & health probes
+│   ├── server.ts             # Server entrypoint (listens on port 4000)
+│   └── Dockerfile            # Container image definition for in-pod deployment
 ├── k8s/                      # Production & Staging Kubernetes Manifests
 │   ├── auth-deployment.yml   # Auth microservice deployment
 │   ├── auth-service.yml      # Auth ClusterIP service (port 80 -> 3000)
@@ -50,7 +54,8 @@ DeployForge/
 │   ├── heal-service.yml      # Heal ClusterIP service (port 80 -> 3000)
 │   ├── router-deployment.yml # Dynamic reverse proxy router deployment
 │   ├── router-service.yml    # Router ClusterIP service (port 80 -> 3000)
-│   ├── ingress.yml           # NGINX Ingress rules (wildcard *.preview.localhost, /api/auth, /api/github, /api/k8s)
+│   ├── ingress.yml           # NGINX Ingress rules (*.preview.localhost, *.agent.localhost, /api/*)
+│   ├── rabac.yml             # Role-based access control for Kubernetes cluster management
 │   └── secrets.yml           # Cluster secrets (MongoDB URI, JWT tokens, OAuth credentials)
 └── skaffold.yml              # Skaffold continuous development & multi-container build pipeline
 ```
@@ -66,10 +71,10 @@ DeployForge/
   - `gitSlice`: Manages repository list, loading state, and error handling for connected GitHub repositories.
 - **Routing**: React Router v7 (`createBrowserRouter`):
   - `/`: High-velocity homepage with interactive self-healing lab, live pipeline stages, and eBPF laser waveform.
-  - `/auth` (also `/login`, `/register`): Interactive dual-mode Authentication Showcase featuring smooth tab morphing, password strength telemetry, and one-click GitHub/Google OAuth.
-  - `/repos` (also `/repositories`, `/console`): Animated GitHub repository management console with 60fps spotlight cards, search/filter controls, and a comprehensive deployment modal supporting root or subfolder/monorepo targeting (e.g. `/Backend`).
+  - `/auth` (also `/login`, `/register`): Dual-mode Authentication Showcase featuring smooth tab morphing, password strength telemetry, and one-click GitHub/Google OAuth.
+  - `/repos` (also `/repositories`, `/console`): Animated GitHub repository management console with 60fps spotlight cards, search/filter controls, and a deployment modal supporting root or subfolder/monorepo targeting (e.g. `/Backend`).
 - **Seamless Authentication & Navigation**:
-  - `useAuthForm`: Unified hook combining credential validation, Redux dispatching, and Google/GitHub OAuth handshakes in a single interface.
+  - `useAuthForm`: Unified hook combining credential validation, Redux dispatching, and Google/GitHub OAuth handshakes.
   - **Dynamic Navbar**: Automatically detects login state to display the **"Repositories"** launcher, authenticated user handle, and quick sign-out.
   - **Hero CTA**: Dynamically toggles between "Launch Autonomous Engine" and "Manage Cloud Repositories" based on user session.
   - **Session Hydration**: Auto-invokes `authApi.getUser()` on app load to restore authenticated sessions from HTTP-only cookies.
@@ -88,32 +93,49 @@ DeployForge/
 - **Framework**: Express 5, TypeScript, `@kubernetes/client-node`, `dockerode`, `octokit`.
 - **Endpoints & Capabilities**:
   - `GET /api/github/repos`: Fetches authenticated user repositories with branch and clone metadata using saved OAuth access tokens. Supports both classic OAuth scopes and fine-grained **GitHub App** installations.
-  - `POST /api/k8s/deploy`: Orchestrates monorepo subfolder resolution, shallow clone, Dockerfile synthesis, Docker image build, `deployforge-pod-<id>` creation (with 512Mi memory quotas), and `delpoyforge-service-<id>` mapping on port 3000. Returns a live preview URL (`http://<id>.preview.localhost`).
+  - `POST /api/k8s/deploy`: Orchestrates monorepo subfolder resolution, shallow clone, Dockerfile synthesis, Docker image build, and multi-container pod creation:
+    - **Init Container**: Seeds code from the built image into a shared `workspace-volume` (`emptyDir`).
+    - **App Container**: Runs the user application with port 5173 exposed.
+    - **Agent Sidecar**: Deploys the `agent` container sharing `/workspace` on port 4000.
+    - **Dual Endpoint Return**: Returns both `previewurl` (`http://<id>.preview.localhost`) and `agenturl` (`http://<id>.agent.localhost`).
   - `GET /api/k8s/health`: Health probe endpoint for Kubernetes liveness/readiness probes.
-  - **Kubernetes Controller**: Queries application pods across namespaces and tails real-time logs.
+  - **Kubernetes Controller**: Queries application pods across namespaces, manages lifecycle, and tails real-time logs.
 
 ### 🌐 Router & Preview Gateway (`/router`)
 - **Framework**: Express 5, TypeScript, `http-proxy-middleware`, CORS, Morgan.
-- **Dynamic Host Routing**:
-  - Parses incoming `Host` headers formatted as `<sandboxId>.preview.localhost`.
-  - Instantiates cached, low-latency reverse proxies streaming to internal Kubernetes services (`delpoyforge-service-<sandboxId>:80`).
-  - Built-in WebSocket upgrade support (`ws: true`) for live Hot Module Reloading (Vite/Next.js) and real-time socket connections.
+- **Dual-Domain Subdomain Routing**:
+  - Parses incoming `Host` headers formatted as:
+    - `<sandboxId>.preview.localhost` ➔ Proxies to `deployforge-service-<sandboxId>:80` (App Preview)
+    - `<sandboxId>.agent.localhost` ➔ Proxies to `deployforge-service-<sandboxId>:4000` (Agent Sidecar)
+  - Instantiates cached, low-latency reverse proxies streaming to internal Kubernetes services.
+  - Built-in WebSocket upgrade support (`ws: true`) for live Hot Module Reloading (Vite/Next.js).
   - Probes at `/api/router/health` and `/api/router/ready`.
+
+### 🤖 In-Pod Agent Sidecar (`/agent`)
+- **Framework**: Express 5, TypeScript, `tsx`, Morgan.
+- **Role & Execution**:
+  - Runs inside the deployed sandbox pod as a co-located sidecar container on port **4000**.
+  - Mounts the shared `workspace-volume` at `/workspace` populated by the pod's init container.
+- **Endpoints**:
+  - `GET /api/agent/health`: Liveness probe (`"Ai agent Running Healthy"`).
+  - `GET /api/agent/ready`: Readiness probe (`"Ai agent Ready"`).
+  - `GET /api/agent/listFiles`: Recursively scans and returns the full directory tree of `/workspace` in JSON, automatically ignoring noise directories (`node_modules`, `.git`, `.vscode`, `dist`).
 
 ---
 
 ## 🌐 Kubernetes & Skaffold Ingress Routing
 
-DeployForge routes all microservices through a unified NGINX Ingress Controller:
+DeployForge routes all traffic through a unified NGINX Ingress Controller:
 
-| Host / Path Pattern | Target Service | Container Port | Description |
+| Host / Path Pattern | Target Service | Target Port | Description |
 | :--- | :--- | :--- | :--- |
-| **`*.preview.localhost`** | `router-service` | `3000` | Dynamic subdomain router for deployed sandbox previews |
+| **`*.preview.localhost`** | `router-service` | `80` (➔ `app:5173`) | Dynamic subdomain router for deployed sandbox app previews |
+| **`*.agent.localhost`** | `router-service` | `80` (➔ `agent:4000`) | Subdomain router for sandbox in-pod developer agents |
 | **`/api/auth`** | `auth-service` | `3000` | Authentication, sessions, & OAuth callbacks |
 | **`/api/github`** | `heal-service` | `3000` | GitHub repository discovery & sync |
 | **`/api/k8s`** | `heal-service` | `3000` | Pod scheduling, logs streaming, & deployment trigger |
 
-`skaffold.yml` continuously monitors source files, builds local Docker containers, and deploys manifests (`auth`, `heal`, `router`, `secrets`, and `ingress`) to your local Kubernetes cluster.
+`skaffold.yml` continuously monitors source files, builds local Docker containers (`auth`, `heal`, `router`, and `agent`), and deploys manifests to your local Kubernetes cluster.
 
 ---
 
@@ -128,7 +150,7 @@ DeployForge routes all microservices through a unified NGINX Ingress Controller:
 
 ### Quickstart with Skaffold (Recommended)
 ```bash
-# 1. Start backend microservices and Kubernetes Ingress
+# 1. Start all cluster microservices and ingress
 skaffold dev
 
 # 2. In another terminal, start the Frontend portal
@@ -164,7 +186,15 @@ npm run dev
 # Running on http://localhost:3000
 ```
 
-#### 4. Start the Frontend
+#### 4. Start the Agent Service (Standalone test)
+```bash
+cd agent
+npm install
+npm run dev
+# Running on http://localhost:4000
+```
+
+#### 5. Start the Frontend
 ```bash
 cd frontend
 npm install
@@ -176,16 +206,16 @@ npm run dev
 
 ## 📜 Monorepo Scripts Reference
 
-| Service | Dev Command | Build Command | Production Start |
-| :--- | :--- | :--- | :--- |
-| **`frontend`** | `npm run dev` | `npm run build` | `npm run preview` |
-| **`auth`** | `npm run dev` | `npm run build` | `npm start` |
-| **`healservice`** | `npm run dev` | `npm run build` | `npm start` |
-| **`router`** | `npm run dev` | `npm run build` | `npm start` |
+| Service | Dev Command | Build Command | Production Start | Default Port |
+| :--- | :--- | :--- | :--- | :--- |
+| **`frontend`** | `npm run dev` | `npm run build` | `npm run preview` | `5173` |
+| **`auth`** | `npm run dev` | `npm run build` | `npm start` | `3000` |
+| **`healservice`** | `npm run dev` | `npm run build` | `npm start` | `3000` |
+| **`router`** | `npm run dev` | `npm run build` | `npm start` | `3000` |
+| **`agent`** | `npm run dev` | `npm run build` | `npm start` | `4000` |
 
 ---
 
 <div align="center">
   <sub>DeployForge Engineering Platform • Built for Resilient Multi-Cloud Operations</sub>
 </div>
-

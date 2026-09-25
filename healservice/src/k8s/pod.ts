@@ -10,11 +10,32 @@ export async function createPod(id: string, imageName: string) {
             }
         },
         "spec": {
+            "volumes":[
+                {
+                    "name":"workspace-volume",
+                    "emptyDir": {}
+                }
+            ],
+            "initContainers": [
+                {
+                    "name": "init-container",
+                    "image": `${imageName}`,
+                    "imagePullPolicy": "IfNotPresent",
+                    "command": ["sh", "-c", "if [ -d /app ]; then cp -a /app/. /seed/; elif [ -d /workspace ]; then cp -a /workspace/. /seed/; fi"],
+                    "volumeMounts": [
+                        {
+                            "name": "workspace-volume",
+                            "mountPath": "/seed"
+                        }
+                    ]
+                }
+            ],
             "containers": [
                 {
                     "name": `${imageName}`,
                     "image": `${imageName}`,
                     "imagePullPolicy": "IfNotPresent",
+                    "ports": [{ "containerPort": 5173 }],
                     "resources": {
                         "limits": {
                             "memory": "512Mi",
@@ -24,9 +45,35 @@ export async function createPod(id: string, imageName: string) {
                             "memory": "256Mi",
                             "cpu": "250m"
                         }
-                    }
+                    },
+                    "volumeMounts": [
+                        {
+                            "name": "workspace-volume",
+                            "mountPath": "/workspace"
+                        }
+                    ],
 
-
+                },{
+                    "name":"agent",
+                    "image":"agent:latest",
+                    "imagePullPolicy":"IfNotPresent",
+                    "ports": [{ "containerPort": 4000 }],
+                    "resources":{
+                        "limits":{
+                            "memory":"512Mi",
+                            "cpu":"500m"
+                        },
+                        "requests":{
+                            "memory":"256Mi",
+                            "cpu":"250m"
+                        }
+                    },
+                    "volumeMounts":[
+                        {
+                            "name":"workspace-volume",
+                            "mountPath":"/workspace"
+                        }
+                    ]
                 }
             ]
         }
@@ -82,7 +129,7 @@ export async function GetLogs(pod: string): Promise<object> {
 
 export async function DeletePod(id: string):Promise<object> {
     const res = await coreV1Api.deleteNamespacedPod({
-        name: `kubeheal-${id}`,
+        name: `deployforge-pod-${id}`,
         namespace: "default",
         gracePeriodSeconds:0
     })

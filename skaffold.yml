@@ -17,6 +17,10 @@ build:
       context: router
       docker:
         dockerfile: Dockerfile
+    - image: agent
+      context: agent
+      docker:
+        dockerfile: Dockerfile
 manifests:
   rawYaml:
     - k8s/rabac.yml
