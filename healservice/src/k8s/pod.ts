@@ -1,10 +1,13 @@
 import { coreV1Api } from "./kubernetes.js";
 
 
-export async function createPod(id: string,imageName:string) {
+export async function createPod(id: string, imageName: string) {
     const pod = {
         "metadata": {
-            "name": `kubeheal-${id}`
+            "name": `kubeheal-${id}`,
+            "labels": {
+                "kubehealId": id
+            }
         },
         "spec": {
             "containers": [
@@ -35,7 +38,7 @@ export async function createPod(id: string,imageName:string) {
     return res;
 }
 
-export async function getPod():Promise<object> {
+export async function getPod(): Promise<object> {
     try {
         const res = await coreV1Api.listPodForAllNamespaces();
 
@@ -62,7 +65,7 @@ export async function getPod():Promise<object> {
     }
 }
 
-export async function GetLogs(pod:string):Promise<object> {
+export async function GetLogs(pod: string): Promise<object> {
     try {
         const response = await coreV1Api.readNamespacedPodLog({
             name: pod,
@@ -70,9 +73,18 @@ export async function GetLogs(pod:string):Promise<object> {
             tailLines: 100
         });
 
-        return {response};
+        return { response };
     }
     catch (err) {
         return { msg: "error in getting logs", err: err }
     }
+}
+
+export async function DeletePod(id: string):Promise<object> {
+    const res = await coreV1Api.deleteNamespacedPod({
+        name: `kubeheal-${id}`,
+        namespace: "default",
+        gracePeriodSeconds:0
+    })
+    return res;
 }
