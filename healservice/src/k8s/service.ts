@@ -1,6 +1,6 @@
 import { coreV1Api } from "./kubernetes.js";
 
-export async function CreateService(id: string):Promise<object>{
+export async function CreateService(id: string, targetPort: number = 3000): Promise<object> {
     const serviceManifest = {
         "metadata": {
             "name": `deployforge-service-${id}`,
@@ -17,7 +17,7 @@ export async function CreateService(id: string):Promise<object>{
                 {
                     "name": "http",
                     "port": 80,
-                    "targetPort": 5173,
+                    "targetPort": targetPort,
                     "protocol": "TCP"
                 },
                 {

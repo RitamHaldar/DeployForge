@@ -56,6 +56,8 @@ export async function DeployDocker(req: AuthRequest, res: Response) {
         return res.status(400).json({ error: "Both repoUrl and repoName are required for deployment" });
     }
 
+    console.log(`[DeployForge] DeployDocker requested: repo=${repoName}, url=${repoUrl}, folder=${folderpath || '/'}`);
+
     if (!fs.existsSync(BUILD_DIR)) {
         fs.mkdirSync(BUILD_DIR, { recursive: true });
     }
@@ -96,22 +98,58 @@ export async function DeployDocker(req: AuthRequest, res: Response) {
                 fs.mkdirSync(buildContext, { recursive: true });
             }
         }
-        ensureDockerfile(buildContext);
+        await ensureDockerfile(buildContext);
+
+        let appPort = 3000;
+        try {
+            const dockerfilePath = path.join(buildContext, 'Dockerfile');
+            if (fs.existsSync(dockerfilePath)) {
+                const content = fs.readFileSync(dockerfilePath, 'utf-8');
+                const match = content.match(/^\s*EXPOSE\s+(\d+)/im);
+                if (match && match[1]) {
+                    appPort = parseInt(match[1], 10);
+                }
+            }
+        } catch (portErr) {
+            console.warn("Failed to parse EXPOSE from Dockerfile, defaulting to 3000:", portErr);
+        }
+
         const tarStream = tar.pack(buildContext);
         const imageName = `sandbox-${buildId}`;
+        console.log(`[DeployForge] Starting Docker build for image ${imageName} in context ${buildContext}...`);
         const buildStream = await docker.buildImage(tarStream as unknown as NodeJS.ReadableStream, {
             t: imageName,
         });
 
+        const buildLogs: string[] = [];
         await new Promise((resolve, reject) => {
-            docker.modem.followProgress(buildStream, (err, output) => {
-                if (err) return reject(err);
-                resolve(output);
-            });
+            docker.modem.followProgress(
+                buildStream,
+                (err, output) => {
+                    if (err) return reject(err);
+                    if (Array.isArray(output)) {
+                        for (const item of output) {
+                            if (item.error || item.errorDetail) {
+                                const errorMsg = item.error || item.errorDetail?.message || "Docker build failed";
+                                const contextLogs = buildLogs.slice(-25).join('');
+                                console.error(`[DeployForge] Docker build error:\n${contextLogs}\nError: ${errorMsg}`);
+                                return reject(new Error(`${errorMsg}\n\nBuild output:\n${contextLogs}`));
+                            }
+                        }
+                    }
+                    resolve(output);
+                },
+                (event) => {
+                    if (event && event.stream) {
+                        process.stdout.write(event.stream);
+                        buildLogs.push(event.stream);
+                    }
+                }
+            );
         });
 
-        const pod = await createPod(buildId, imageName);
-        const service = await CreateService(buildId);
+        const pod = await createPod(buildId, imageName, appPort);
+        const service = await CreateService(buildId, appPort);
         const containerId = (pod as any)?.metadata?.name ?? (pod as any)?.body?.metadata?.name ?? `kubeheal-${buildId}`;
         const status = (pod as any)?.status ?? (pod as any)?.body?.status ?? 'Pending';
 

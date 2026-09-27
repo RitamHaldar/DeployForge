@@ -90,13 +90,19 @@ DeployForge/
   - **Resilient DNS Resolver**: Explicit public DNS resolver fallback (`dns.setServers`) ensuring reliable SRV lookup (`querySrv`) for MongoDB Atlas clusters inside Docker and Kubernetes pods.
 
 ### 🩺 Heal & Orchestration Service (`/healservice`)
-- **Framework**: Express 5, TypeScript, `@kubernetes/client-node`, `dockerode`, `octokit`.
+- **Framework**: Express 5, TypeScript, `@kubernetes/client-node`, `dockerode`, `octokit`, `langchain`, `@langchain/mistralai`, `@langchain/openai`.
 - **Endpoints & Capabilities**:
   - `GET /api/github/repos`: Fetches authenticated user repositories with branch and clone metadata using saved OAuth access tokens. Supports both classic OAuth scopes and fine-grained **GitHub App** installations.
-  - `POST /api/k8s/deploy`: Orchestrates monorepo subfolder resolution, shallow clone, Dockerfile synthesis, Docker image build, and multi-container pod creation:
-    - **Init Container**: Seeds code from the built image into a shared `workspace-volume` (`emptyDir`).
-    - **App Container**: Runs the user application with port 5173 exposed.
-    - **Agent Sidecar**: Deploys the `agent` container sharing `/workspace` on port 4000.
+  - `POST /api/k8s/deploy`: Orchestrates monorepo subfolder resolution, shallow clone, autonomous AI Dockerfile synthesis, Docker image build, and multi-container pod creation:
+    - **Autonomous AI Dockerfile Synthesis**: LangChain ReAct agent (Mistral `codestral-latest` or NVIDIA `openai/gpt-oss-20b`) inspects files and manifests using `fileListTool` and `readFileTool` to automatically detect runtime, dependencies, start scripts, and listening ports.
+    - **Build Script Safety Guard**: Checks `package.json` scripts to prevent generating `RUN npm run build` if no build script exists, eliminating npm non-zero exit code failures.
+    - **Dependency Protection**: Guarantees devDependencies are not pruned prior to compilation (`NODE_ENV=production` is never applied during build).
+    - **Dynamic Port Discovery**: Extracts `EXPOSE <port>` from the synthesized Dockerfile and dynamically maps it to the Kubernetes container and service target port.
+    - **Real-Time Build Streaming**: Streams Docker build logs live to stdout and captures full diagnostic logs upon build failure.
+    - **Multi-Container Pod**:
+      - **Init Container**: Seeds code from the built image into a shared `workspace-volume` (`emptyDir`).
+      - **App Container**: Runs the user application with `containerPort` dynamically matching the application port.
+      - **Agent Sidecar**: Deploys the `agent` container sharing `/workspace` on port 4000.
     - **Dual Endpoint Return**: Returns both `previewurl` (`http://<id>.preview.localhost`) and `agenturl` (`http://<id>.agent.localhost`).
   - `GET /api/k8s/health`: Health probe endpoint for Kubernetes liveness/readiness probes.
   - **Kubernetes Controller**: Queries application pods across namespaces, manages lifecycle, and tails real-time logs.
@@ -105,8 +111,8 @@ DeployForge/
 - **Framework**: Express 5, TypeScript, `http-proxy-middleware`, CORS, Morgan.
 - **Dual-Domain Subdomain Routing**:
   - Parses incoming `Host` headers formatted as:
-    - `<sandboxId>.preview.localhost` ➔ Proxies to `deployforge-service-<sandboxId>:80` (App Preview)
-    - `<sandboxId>.agent.localhost` ➔ Proxies to `deployforge-service-<sandboxId>:4000` (Agent Sidecar)
+    - `<sandboxId>.preview.localhost` ➔ Proxies to `deployforge-service-<sandboxId>:80` (App Preview on dynamic port)
+    - `<sandboxId>.agent.localhost` ➔ Proxies to `deployforge-service-<sandboxId>:4000` (Agent Sidecar on port 4000)
   - Instantiates cached, low-latency reverse proxies streaming to internal Kubernetes services.
   - Built-in WebSocket upgrade support (`ws: true`) for live Hot Module Reloading (Vite/Next.js).
   - Probes at `/api/router/health` and `/api/router/ready`.
@@ -129,7 +135,7 @@ DeployForge routes all traffic through a unified NGINX Ingress Controller:
 
 | Host / Path Pattern | Target Service | Target Port | Description |
 | :--- | :--- | :--- | :--- |
-| **`*.preview.localhost`** | `router-service` | `80` (➔ `app:5173`) | Dynamic subdomain router for deployed sandbox app previews |
+| **`*.preview.localhost`** | `router-service` | `80` (➔ `app:<targetPort>`) | Dynamic subdomain router for deployed sandbox app previews |
 | **`*.agent.localhost`** | `router-service` | `80` (➔ `agent:4000`) | Subdomain router for sandbox in-pod developer agents |
 | **`/api/auth`** | `auth-service` | `3000` | Authentication, sessions, & OAuth callbacks |
 | **`/api/github`** | `heal-service` | `3000` | GitHub repository discovery & sync |

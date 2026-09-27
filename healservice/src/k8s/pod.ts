@@ -1,7 +1,7 @@
 import { coreV1Api } from "./kubernetes.js";
 
 
-export async function createPod(id: string, imageName: string) {
+export async function createPod(id: string, imageName: string, containerPort: number = 3000) {
     const pod = {
         "metadata": {
             "name": `deployforge-pod-${id}`,
@@ -35,7 +35,7 @@ export async function createPod(id: string, imageName: string) {
                     "name": `${imageName}`,
                     "image": `${imageName}`,
                     "imagePullPolicy": "IfNotPresent",
-                    "ports": [{ "containerPort": 5173 }],
+                    "ports": [{ "containerPort": containerPort }],
                     "resources": {
                         "limits": {
                             "memory": "512Mi",

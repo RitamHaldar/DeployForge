@@ -1,6 +1,8 @@
 {
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",
+    "@langchain/mistralai": "^1.2.0",
+    "@langchain/openai": "^1.6.0",
     "@octokit/rest": "^22.0.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -8,6 +10,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "langchain": "^1.5.14",
     "mongoose": "^9.10.1",
     "morgan": "^1.12.1",
     "simple-git": "^3.36.0",

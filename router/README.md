@@ -22,12 +22,13 @@
 
 The **DeployForge Router Service** acts as an intelligent, dynamic reverse proxy layer sitting between the public **NGINX Ingress Controller** and internal sandbox application pods provisioned by DeployForge.
 
-When developers deploy an application through DeployForge, the platform generates an on-demand preview URL in the format:
+When developers deploy an application through DeployForge, the platform generates on-demand preview and agent URLs in the format:
 ```text
-http://<sandboxId>.preview.localhost
+http://<sandboxId>.preview.localhost   # Application preview
+http://<sandboxId>.agent.localhost     # In-pod agent sidecar
 ```
 
-The router dynamically inspects incoming HTTP request headers, extracts the `sandboxId`, instantiates or retrieves a cached proxy middleware pipeline, and forwards traffic seamlessly to the corresponding internal Kubernetes service (`delpoyforge-service-<sandboxId>`) with full WebSocket and HTTP/1.1 streaming support.
+The router dynamically inspects incoming HTTP request headers, extracts the `sandboxId` and routing `type`, instantiates or retrieves a cached proxy middleware pipeline, and forwards traffic seamlessly to the corresponding internal Kubernetes service (`deployforge-service-<sandboxId>`) with full WebSocket and HTTP/1.1 streaming support.
 
 ---
 
@@ -36,31 +37,34 @@ The router dynamically inspects incoming HTTP request headers, extracts the `san
 ```
                         [ Browser / Client ]
                                  │
-                 http://<id>.preview.localhost/
+             http://<id>.preview.localhost/ OR http://<id>.agent.localhost/
                                  ▼
                      [ NGINX Ingress Controller ]
                          (frameforge-ingress)
-                        Rule: *.preview.localhost
+                    Rules: *.preview.localhost & *.agent.localhost
                                  │
                    Forward to router-service:80
                                  ▼
                     [ DeployForge Router Pod ]
                      (Express 5 + Proxy Pool)
                                  │
-         1. Parse req.headers.host -> "<sandboxId>.preview.localhost"
-         2. Validate subdomain type == "preview"
+         1. Parse req.headers.host -> "<sandboxId>.<type>.localhost"
+         2. Validate subdomain type ("preview" vs "agent")
          3. Lookup or cache proxy instance for sandboxId
          4. Forward to internal ClusterIP Service
                                  │
-                                 ▼
-                 [ Kubernetes ClusterIP Service ]
-                  delpoyforge-service-<sandboxId>:80
-                         (targetPort: 3000)
-                                 │
-                                 ▼
-                  [ Deployed Application Pod ]
-                   deployforge-pod-<sandboxId>
-                   Container listening on :3000
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+       (type === "preview")             (type === "agent")
+                 │                               │
+                 ▼                               ▼
+   [ Kubernetes ClusterIP Service ] [ Kubernetes ClusterIP Service ]
+     deployforge-service-<id>:80      deployforge-service-<id>:4000
+    (targetPort: dynamic appPort)         (targetPort: 4000)
+                 │                               │
+                 ▼                               ▼
+      [ App Sandbox Container ]         [ Agent Sidecar Container ]
+       Listening on dynamic port           Listening on port 4000
 ```
 
 ---
@@ -72,33 +76,46 @@ The router inspects the `Host` header of every incoming HTTP request:
 ```typescript
 const host = req.headers.host || "";
 const sandboxId = host.split(".")[0]?.trim(); // e.g. "d11b0449-b2ab-47fa-8bfa-6a7a27a72de4"
-const type = host.split(".")[1]?.trim();      // e.g. "preview"
+const type = host.split(".")[1]?.trim();      // "preview" or "agent"
 ```
 
 ### Routing Rules
 
 | Subdomain Pattern | Action | Destination |
 | :--- | :--- | :--- |
-| **`<id>.preview.localhost`** | Dynamically proxied | `http://delpoyforge-service-<id>:80` |
+| **`<id>.preview.localhost`** | Dynamically proxied | `http://deployforge-service-<id>:80` |
+| **`<id>.agent.localhost`** | Dynamically proxied | `http://deployforge-service-<id>:4000` |
 | **`/api/router/health`** | Direct response (200 OK) | Internal health monitor |
 | **`/api/router/ready`** | Direct response (200 OK) | Internal readiness monitor |
-| **Unknown host or non-preview** | Returns `404 Not Found` | `{ "error": "Invalid preview host" }` |
+| **Unknown host or non-preview/agent** | Returns `404 Not Found` | `{ "error": "Invalid preview host" }` |
 
 ### Dynamic Proxy Caching
 To maintain high throughput and minimize overhead, proxy instances are lazily created and cached in memory per `sandboxId`:
 
 ```typescript
 const proxies: Record<string, ReturnType<typeof createProxyMiddleware>> = {};
+const agentproxies: Record<string, ReturnType<typeof createProxyMiddleware>> = {};
 
 function getOrCreateProxy(sandboxId: string) {
     if (!proxies[sandboxId]) {
         proxies[sandboxId] = createProxyMiddleware({
-            target: `http://delpoyforge-service-${sandboxId}`,
+            target: `http://deployforge-service-${sandboxId}`,
             changeOrigin: true,
             ws: true // Full WebSocket & Vite/Next.js HMR support
         });
     }
     return proxies[sandboxId];
+}
+
+function getOrCreateAgentProxy(sandboxId: string) {
+    if (!agentproxies[sandboxId]) {
+        agentproxies[sandboxId] = createProxyMiddleware({
+            target: `http://deployforge-service-${sandboxId}:4000`,
+            changeOrigin: true,
+            ws: true
+        });
+    }
+    return agentproxies[sandboxId];
 }
 ```
 

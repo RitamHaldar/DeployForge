@@ -48,6 +48,7 @@ The **DeployForge Heal Service** is the deployment orchestration, container virt
 - **Framework**: [Express.js](https://expressjs.com/) (v5)
 - **Containerization Engine**: [Dockerode](https://github.com/apocas/dockerode) & Docker Engine API (`/var/run/docker.sock`)
 - **Kubernetes Client**: [@kubernetes/client-node](https://github.com/kubernetes-client/javascript) (`CoreV1Api`)
+- **AI Orchestration & Agent**: [LangChain](https://js.langchain.com/), [@langchain/mistralai](https://www.npmjs.com/package/@langchain/mistralai) (`codestral-latest`), and [@langchain/openai](https://www.npmjs.com/package/@langchain/openai) (`openai/gpt-oss-20b` via NVIDIA NIM)
 - **Git & GitHub Integration**: [Octokit REST](https://github.com/octokit/rest.js), [simple-git](https://github.com/steveukx/git-js), and [tar-fs](https://github.com/mafintosh/tar-fs)
 - **Database & Auth**: [Mongoose](https://mongoosejs.com/) & [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken)
 - **Realtime / Sockets**: [Socket.io](https://socket.io/) (for real-time events)
@@ -64,24 +65,28 @@ healservice/
 └── src/
     ├── app.ts                    # Express application instance and route mounting
     ├── config/
-    │   ├── config.ts             # Centralized environment variable loader (MONGO_URI, JWT_TOKEN)
+    │   ├── config.ts             # Centralized environment variable loader (MONGO_URI, JWT_TOKEN, AI keys)
     │   └── db.ts                 # MongoDB Mongoose connection utility
     ├── controller/
     │   ├── docker.controller.ts  # Git clone, Docker build, and container run orchestration
     │   ├── github.controller.ts  # GitHub repository fetcher using user's OAuth access token
-    │   └── k8s.controller.ts     # Kubernetes cluster query and pod log retrieval handlers
+    │   └── k8s.controller.ts     # Kubernetes cluster query, pod log retrieval, and build orchestration
     ├── github/
-    │   └── clone.ts              # Docker daemon client & fallback Dockerfile generator
+    │   └── clone.ts              # Docker daemon client, cleanDockerfile extractor & safety validator
     ├── k8s/
     │   ├── kubernetes.ts         # Kubernetes KubeConfig initialization & CoreV1Api client
-    │   └── pod.ts                # Pod deployment, status queries, and log extraction logic
+    │   ├── pod.ts                # Pod deployment with dynamic containerPort & agent sidecar
+    │   └── service.ts            # Kubernetes Service provisioner with dynamic targetPort mapping
     ├── middleware/
     │   └── user.middleware.ts    # JWT verification middleware & AuthRequest type definitions
     ├── models/
     │   └── user.model.ts         # User model reference to retrieve GitHub access tokens
-    └── routes/
-        ├── github.routes.ts      # Router for GitHub repository operations
-        └── k8s.routes.ts         # Router for Kubernetes pod queries and log streams
+    ├── routes/
+    │   ├── github.routes.ts      # Router for GitHub repository operations
+    │   └── k8s.routes.ts         # Router for Kubernetes pod queries and log streams
+    └── utils/
+        ├── agent.ts              # LangChain ReAct Docker agent with framework-specific templates
+        └── tools.ts              # Workspace inspection tools (fileListTool, readfileTool with safety limits)
 ```
 
 ---
@@ -94,6 +99,7 @@ Before running the service, make sure you have:
 2. A running **Kubernetes cluster** (e.g. Minikube, Kind, Docker Desktop Kubernetes, or remote cloud cluster) with a valid `~/.kube/config`.
 3. **Docker Daemon** running locally with the Docker socket available at `/var/run/docker.sock` (or Docker Desktop on Windows/macOS).
 4. A running **MongoDB** database instance containing user accounts created by the Auth service.
+5. A **Mistral AI API Key** (`MISTRAL_API_KEY`) or **NVIDIA API Key** (`NVIDIA_API_KEY`) for AI Dockerfile synthesis.
 
 ---
 
@@ -103,9 +109,11 @@ Create a `.env` file in the root of the `healservice` directory:
 
 | Variable | Type | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `PORT` | `number` | Port on which the Heal service listens | `5000` (or `3001`) |
+| `PORT` | `number` | Port on which the Heal service listens | `3000` |
 | `MONGO_URI` | `string` | MongoDB connection URI matching the Auth service | `mongodb+srv://...` |
 | `JWT_TOKEN` | `string` | Secret key used to verify user auth cookies | `your_jwt_secret` |
+| `MISTRAL_API_KEY` | `string` | Mistral API key (uses `codestral-latest` for Dockerfile synthesis) | `your_mistral_api_key` |
+| `NVIDIA_API_KEY` | `string` | NVIDIA NIM API key (fallback model `openai/gpt-oss-20b`) | `nvapi-...` |
 
 ---
 
@@ -221,20 +229,26 @@ Fetches the user's latest 50 repositories from GitHub using the user's saved `Gi
 
 ### 3. Kubernetes & Docker Container Deployment Engine
 
-The deployment controller handles end-to-end repository cloning, subfolder resolution, Docker build, and Kubernetes pod/service orchestration:
+The deployment controller handles end-to-end repository cloning, subfolder resolution, AI-driven Dockerfile synthesis, Docker build, and Kubernetes multi-container pod/service orchestration:
 
 ```
 [Git Repo URL + Token] ──> simpleGit.clone()
                                     │
     [folderpath (e.g. /Backend)] ──> resolve targetDir ──> ensureDockerfile()
                                                                  │
+                                                       (AI Agent / Codestral)
+                                                       Inspect manifest & scripts
+                                                       Guard against missing build
+                                                                 │
                                                             tar-fs.pack()
                                                                  │
                                                                  ▼
-[delpoyforge-service-<id>] <── createPod() & CreateService() <── docker.buildImage()
+[deployforge-service-<id>] <── createPod() & CreateService() <── docker.buildImage()
+(port 80 -> dynamic appPort)       (App + Agent Sidecar)      (Real-time log streaming)
+(port 4000 -> agent port 4000)
             │
-            ▼
-[Preview URL: http://<id>.preview.localhost]
+            ├─► [Preview URL: http://<id>.preview.localhost]
+            └─► [Agent URL:   http://<id>.agent.localhost]
 ```
 
 - **Endpoint**: `POST /api/k8s/deploy`
@@ -256,18 +270,31 @@ The deployment controller handles end-to-end repository cloning, subfolder resol
      - Strips leading/trailing slashes (e.g., `/Backend` ➔ `Backend`).
      - Enforces security checks preventing path traversal outside the cloned directory (`targetDir.startsWith(workspacePath)`).
      - Performs case-insensitive directory resolution to handle capitalization discrepancies (`/backend` vs `/Backend`).
-  4. **Dockerfile Synthesis**:
-     - Inspects the target directory for an existing `Dockerfile`.
-     - If absent, generates an optimized Node.js 20 Alpine `Dockerfile` directly inside the subfolder.
-  5. **Docker Build**:
-     - Archives the target subfolder via `tar-fs.pack()` so the build context and `package.json` are properly scoped.
-     - Builds the Docker image `sandbox-<buildId>`.
-  6. **Kubernetes Orchestration**:
-     - Schedules pod `deployforge-pod-<id>` with production-grade resource allocations:
-       - Memory Limits: `512Mi` (requests `256Mi`) to eliminate Node.js `OOMKilled` crashes.
-       - CPU Limits: `500m` (requests `250m`).
-     - Provisions a ClusterIP Service `delpoyforge-service-<id>` mapping port `80` to container port `3000`.
-     - Returns a direct preview URL: `http://<buildId>.preview.localhost`.
+  4. **Autonomous AI Dockerfile Synthesis**:
+     - If no `Dockerfile` exists in the target directory, invokes a LangChain ReAct agent powered by Mistral AI (`codestral-latest`) or NVIDIA (`openai/gpt-oss-20b`).
+     - Uses `fileListTool` and `readFileTool` (with 8KB guardrails) to inspect `package.json`, `tsconfig.json`, `requirements.txt`, or server entry files.
+     - **Build Script Safety Guard**: Verifies whether `"build"` exists in `package.json.scripts`. If no build script is defined, it prevents adding `RUN npm run build` (eliminating `npm error Missing script: build` failures).
+     - **Dependency Protection**: Guarantees `NODE_ENV=production` and `--omit=dev` are never applied prior to `npm run build`, ensuring devDependencies (e.g. `vite`, `tsc`, `tailwindcss`) are available for compilation.
+     - Detects framework architecture:
+       - **React / Vite / Vue / Angular SPA**: Generates a multi-stage build, serving the compiled static bundle (`dist`/`build`) via `serve -s dist -l 3000`.
+       - **Next.js (SSR / Fullstack)**: Sets `ENV NEXT_TELEMETRY_DISABLED=1`, compiles with `npm run build`, binds to `0.0.0.0:3000`, and copies `.next` into the runner.
+       - **Node.js / Express**: Single-stage lightweight container, running the detected start script or entrypoint on the detected port.
+       - **Python (FastAPI / Flask / Django)**: Installs `requirements.txt` and runs with `uvicorn` / `gunicorn` binding to `0.0.0.0:8000`.
+  5. **Docker Build with Real-time Diagnostics**:
+     - Streams repository tarball via `tar-fs.pack()` into the local Docker daemon.
+     - Follows build progress in real time via `docker.modem.followProgress` streaming stdout/stderr to the console.
+     - On failure, captures the trailing build logs and returns the exact compiler/npm error.
+  6. **Dynamic Port Discovery & Kubernetes Orchestration**:
+     - Automatically parses `EXPOSE <port>` from the generated `Dockerfile` (defaulting to 3000).
+     - Schedules pod `deployforge-pod-<id>` with multi-container architecture:
+       - **Init Container**: Seeds code from the built image into a shared `workspace-volume` (`emptyDir`).
+       - **App Container**: Runs the user application with `containerPort` dynamically matching `EXPOSE <port>`.
+       - **Agent Sidecar**: In-pod developer agent sharing `/workspace` on port 4000.
+       - Resource allocations: Memory limits `512Mi` (requests `256Mi`), CPU limits `500m` (requests `250m`).
+     - Provisions a dual-port ClusterIP Service `deployforge-service-<id>`:
+       - Port `80` mapped to the dynamic application `targetPort`.
+       - Port `4000` mapped to the agent sidecar container port `4000`.
+     - Returns preview and agent endpoints.
   7. **Build Cleanup**: Safely cleans up temporary clone files from `/tmp/builds/<buildId>`.
 
 - **Response (`200 OK`)**:
@@ -277,7 +304,8 @@ The deployment controller handles end-to-end repository cloning, subfolder resol
     "containerId": "deployforge-pod-d11b0449-b2ab-47fa-8bfa-6a7a27a72de4",
     "status": "Pending",
     "message": "Deployment pod deployforge-pod-d11b0449-b2ab-47fa-8bfa-6a7a27a72de4 provisioned successfully",
-    "previewurl": "http://d11b0449-b2ab-47fa-8bfa-6a7a27a72de4.preview.localhost"
+    "previewurl": "http://d11b0449-b2ab-47fa-8bfa-6a7a27a72de4.preview.localhost",
+    "agenturl": "http://d11b0449-b2ab-47fa-8bfa-6a7a27a72de4.agent.localhost"
   }
   ```
 

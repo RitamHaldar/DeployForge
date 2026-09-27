@@ -52,7 +52,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     if (type === "preview") {
         return getOrCreateProxy(sandboxId)(req, res, next);
     }
-    else if(type === "agent"){
+    else if (type === "agent") {
         return getOrCreateAgentProxy(sandboxId)(req, res, next);
     }
     return res.status(404).json({ error: "Invalid preview host" });
