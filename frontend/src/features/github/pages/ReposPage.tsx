@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGit } from '../hooks/useGit';
 import { GithubHeader } from '../components/GithubHeader';
@@ -23,9 +24,11 @@ import {
   Check,
   Plus,
   Folder,
+  Sparkles,
 } from 'lucide-react';
 
 export function ReposPage() {
+  const navigate = useNavigate();
   const {
     repos,
     loading,
@@ -49,6 +52,8 @@ export function ReposPage() {
     containerId?: string;
     status?: any;
     message?: string;
+    previewurl?: string;
+    agenturl?: string;
   } | null>(null);
   const [copiedCloneUrl, setCopiedCloneUrl] = useState(false);
   const [folderPath, setFolderPath] = useState('');
@@ -182,6 +187,28 @@ export function ReposPage() {
     try {
       const result = await deployRepo(payload);
       setDeployResult(result);
+
+      if (result && (result.previewurl || result.containerId)) {
+        const buildIdMatch = result.previewurl?.match(/https?:\/\/([^.]+)\.preview/);
+        const deploymentId =
+          buildIdMatch?.[1] ||
+          result.containerId?.replace('deployforge-pod-', '') ||
+          'active';
+
+        // Automatically redirect to deployment dashboard
+        setTimeout(() => {
+          setSelectedRepo(null);
+          navigate(`/deployment/${deploymentId}`, {
+            state: {
+              ...result,
+              repoName: selectedRepo.name,
+              repoUrl: payload.repoUrl,
+              folderpath: payload.folderpath,
+              deployedAt: new Date().toISOString(),
+            },
+          });
+        }, 800);
+      }
     } catch (err) {
       console.error('Deployment execution error:', err);
     }
@@ -443,35 +470,60 @@ export function ReposPage() {
               {/* Success State Banner */}
               {deployResult?.success ? (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-2">
-                    <div className="flex items-center gap-2 text-emerald-400 font-semibold">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Deployment Successfully Initiated</span>
-                    </div>
-                    <div className="pl-6 space-y-1 text-neutral-300 text-[11px]">
-                      <div>
-                        Container ID:{' '}
-                        <span className="text-white font-medium">{deployResult.containerId}</span>
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Deployment Live & Healthy</span>
                       </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                        k8s pod active
+                      </span>
+                    </div>
+
+                    <div className="pl-6 space-y-1.5 text-neutral-300 text-[11px]">
                       <div>
-                        Status:{' '}
-                        <span className="text-emerald-400 font-medium">
-                          {deployResult.status?.phase ||
-                            (typeof deployResult.status === 'string'
-                              ? deployResult.status
-                              : 'Active')}
+                        Preview URL:{' '}
+                        <span className="text-cyan-400 font-mono font-medium">
+                          {deployResult.previewurl}
                         </span>
                       </div>
+                      <div>
+                        Container Pod:{' '}
+                        <span className="text-white font-mono">{deployResult.containerId}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex items-center gap-2 text-neutral-400 text-[11px]">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                      <span>Opening deployment dashboard...</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end">
+                  <div className="flex items-center justify-end gap-2.5">
                     <button
                       type="button"
-                      onClick={handleCloseModal}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-100 transition-colors"
+                      onClick={() => {
+                        setSelectedRepo(null);
+                        const buildIdMatch = deployResult.previewurl?.match(/https?:\/\/([^.]+)\.preview/);
+                        const deploymentId =
+                          buildIdMatch?.[1] ||
+                          deployResult.containerId?.replace('deployforge-pod-', '') ||
+                          'active';
+                        navigate(`/deployment/${deploymentId}`, {
+                          state: {
+                            ...deployResult,
+                            repoName: selectedRepo?.name,
+                            repoUrl: selectedRepo?.cloneUrl,
+                            folderpath: folderPath.trim() || undefined,
+                            deployedAt: new Date().toISOString(),
+                          },
+                        });
+                      }}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-cyan-400 hover:bg-cyan-300 text-black flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(0,240,255,0.25)]"
                     >
-                      Done
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Open Console Now</span>
                     </button>
                   </div>
                 </div>

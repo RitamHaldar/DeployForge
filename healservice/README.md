@@ -309,6 +309,10 @@ The deployment controller handles end-to-end repository cloning, subfolder resol
   }
   ```
 
+> [!TIP]
+> **Frontend Automated Redirection**:
+> When `POST /api/k8s/deploy` succeeds, DeployForge's frontend (`useGit.ts`) intercepts this payload, commits the record to Redux (`setCurrentDeployment`), and immediately routes the developer to `/deployment/<sandboxId>` to observe the build in the single-window command center without requiring a manual page refresh.
+
 ---
 
 ## 🔒 Kubernetes & Docker Engine Architecture

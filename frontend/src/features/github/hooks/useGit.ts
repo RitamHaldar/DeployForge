@@ -5,6 +5,8 @@ import { GetRepos, Deploy } from '../services/github.api';
 import { setLoading, setRepos, setError } from '../github.slice';
 import type { DeployPayload } from '../types';
 
+import { setCurrentDeployment } from '../../deployment/deployment.slice';
+
 export function useGit() {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -31,6 +33,30 @@ export function useGit() {
     try {
       const response = await Deploy(payload);
       setDeployLoading(false);
+
+      if (response && (response.previewurl || response.containerId)) {
+        const buildIdMatch = response.previewurl?.match(/https?:\/\/([^.]+)\.preview/);
+        const deploymentId =
+          buildIdMatch?.[1] ||
+          response.containerId?.replace('deployforge-pod-', '') ||
+          'active-deployment';
+
+        dispatch(
+          setCurrentDeployment({
+            id: deploymentId,
+            previewurl: response.previewurl || `http://${deploymentId}.preview.localhost`,
+            agenturl: response.agenturl || `http://${deploymentId}.agent.localhost`,
+            containerId: response.containerId || `deployforge-pod-${deploymentId}`,
+            status: response.status || 'Running',
+            message: response.message || 'Deployment provisioned successfully',
+            repoName: payload.repoName,
+            repoUrl: payload.repoUrl,
+            folderpath: payload.folderpath,
+            deployedAt: new Date().toISOString(),
+          })
+        );
+      }
+
       return response;
     } catch (err: any) {
       const message =
@@ -42,7 +68,7 @@ export function useGit() {
       setDeployLoading(false);
       throw err;
     }
-  }, []);
+  }, [dispatch]);
 
   return {
     repos,

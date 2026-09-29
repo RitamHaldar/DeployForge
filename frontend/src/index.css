@@ -154,25 +154,26 @@ body {
 @utility btn-sweep {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
   &::after {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
+    top: -100%;
+    left: -100%;
+    width: 300%;
+    height: 300%;
     background: linear-gradient(
       60deg,
       transparent,
-      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.2),
       transparent
     );
-    transform: rotate(25deg) translateY(-100%);
+    transform: rotate(25deg) translateY(-200%);
     transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
   }
   &:hover::after {
-    transform: rotate(25deg) translateY(100%);
+    transform: rotate(25deg) translateY(200%);
   }
 }
 
@@ -266,4 +267,7 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+*::-webkit-scrollbar{
+  display: none;
 }

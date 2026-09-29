@@ -26,10 +26,11 @@ DeployForge is organized as a modular microservices platform with unified ingres
 ```text
 DeployForge/
 ├── frontend/                 # React 19 + Vite 8 Developer Portal & Cloud Dashboard
-│   ├── src/App/              # React Router v7 routes & Redux Toolkit store (auth & git reducers)
+│   ├── src/App/              # React Router v7 routes & Redux Toolkit store (auth, git, deployment reducers)
 │   ├── src/features/home/    # Self-healing simulator, eBPF telemetry, interactive pipeline & dynamic Navbar
 │   ├── src/features/auth/    # Dedicated /login & /register pages with unified useAuthForm & OAuth
-│   └── src/features/github/  # /repos dashboard with subfolder selection & 1-click cloud deployment modal
+│   ├── src/features/github/  # /repos dashboard with subfolder selection & 1-click cloud deployment modal
+│   └── src/features/deployment/ # Single-window zero-scroll deployment command center (/deployment/:id)
 ├── auth/                     # Identity & Session Gateway Microservice (Port 3000)
 │   ├── src/controller/       # Register, Login, Google OAuth, GitHub OAuth, and GetUser controllers
 │   ├── src/middleware/       # JWT session verification middleware (supports JWT_TOKEN & JWT_SECRET)
@@ -47,7 +48,7 @@ DeployForge/
 │   ├── src/app.ts            # Express 5 app with recursive workspace file inspection & health probes
 │   ├── server.ts             # Server entrypoint (listens on port 4000)
 │   └── Dockerfile            # Container image definition for in-pod deployment
-├── k8s/                      # Production & Staging Kubernetes Manifests
+├── k8s/                      # Production & Staging Kubernetes Manifests & Cluster Guide (README.md)
 │   ├── auth-deployment.yml   # Auth microservice deployment
 │   ├── auth-service.yml      # Auth ClusterIP service (port 80 -> 3000)
 │   ├── heal-deployment.yml   # Heal microservice deployment
@@ -69,14 +70,25 @@ DeployForge/
 - **Global State Management**: Redux Toolkit (`@reduxjs/toolkit` + `react-redux`):
   - `authSlice`: Manages `user`, `isLoading`, and `error` state with `setUser`, `setLoading`, `setError`, and `logout`.
   - `gitSlice`: Manages repository list, loading state, and error handling for connected GitHub repositories.
+  - `deploymentSlice`: Manages active deployment records (`currentDeployment`) and historical deployments (`history`) with localStorage persistence.
 - **Routing**: React Router v7 (`createBrowserRouter`):
   - `/`: High-velocity homepage with interactive self-healing lab, live pipeline stages, and eBPF laser waveform.
   - `/auth` (also `/login`, `/register`): Dual-mode Authentication Showcase featuring smooth tab morphing, password strength telemetry, and one-click GitHub/Google OAuth.
   - `/repos` (also `/repositories`, `/console`): Animated GitHub repository management console with 60fps spotlight cards, search/filter controls, and a deployment modal supporting root or subfolder/monorepo targeting (e.g. `/Backend`).
+  - `/deployment/:deploymentId` (also `/deployment`): Single-window zero-scroll deployment command center featuring:
+    - **Single-Window Viewport Containment**: Strict `h-screen max-h-screen overflow-hidden` flexbox containment with zero page-level scrolling.
+    - **Layout Modes**: Instant switching between **Split View** (60/40 preview and console), **Preview Focus** (100% full-width iframe), and **Inspector Focus** (100% full-width console).
+    - **Multi-Device Responsive Preview Frame**: Simulated browser chrome with Desktop, Tablet (768px iPad), and Mobile (390px iPhone) viewports, reload controls, and live telemetry readout (`200 OK • HTTP/1.1 Ingress Proxy`).
+    - **Unified Console Inspector**: Tabbed observability suite containing:
+      - *Infrastructure*: Pod specifications, namespace, node, container instances, port mappings (80 -> 3000).
+      - *Runtime Logs*: Real-time container stdout/stderr log streaming with search query filtering, severity levels (`all`, `info`, `build`, `warn`, `error`), autoscroll, and export.
+      - *Health & Probes*: Interactive multi-stage probe runner (`Check Probes`), timing waterfall (DNS, TCP, TTFB), 2×2 telemetry cards with live SVG sparkline wave graphs (CPU, Memory, Latency, Reliability), K8s probe specs, and connected lifecycle events timeline.
+    - **Productivity Accelerators**: Keyboard shortcuts (`C` to copy preview URL, `V` to immediately visit), instant Share modal with QR code generation.
 - **Seamless Authentication & Navigation**:
   - `useAuthForm`: Unified hook combining credential validation, Redux dispatching, and Google/GitHub OAuth handshakes.
   - **Dynamic Navbar**: Automatically detects login state to display the **"Repositories"** launcher, authenticated user handle, and quick sign-out.
   - **Hero CTA**: Dynamically toggles between "Launch Autonomous Engine" and "Manage Cloud Repositories" based on user session.
+  - **Automated Workflow Redirection**: Deploying from `/repos` automatically hydrates the Redux store and routes the developer to `/deployment/:id`.
   - **Session Hydration**: Auto-invokes `authApi.getUser()` on app load to restore authenticated sessions from HTTP-only cookies.
 
 ### 🔐 Auth Microservice (`/auth`)

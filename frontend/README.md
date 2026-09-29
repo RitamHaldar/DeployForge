@@ -132,6 +132,41 @@ DeployForge features an immersive, cybernetic developer aesthetic built on pure 
   - **Monorepo Subfolder Targeting**: Dedicated **Root Directory / Subfolder** configuration input allowing developers to deploy microservices housed within monorepos (e.g., `/Backend`, `client/`, or root).
   - **Reactive Deployment Pipeline**: Triggers `POST /api/k8s/deploy` with payload `{ repoUrl, repoName, folderpath }`.
   - **Telemetry & Status Monitor**: Instant feedback detailing the provisioned container ID (`deployforge-pod-<id>`) and deployment phase.
+  - **Automated Workspace Redirection**: Upon successful provisioning, the developer is immediately routed to the single-window deployment command center (`/deployment/:id`) with full state hydration.
+
+---
+
+### 4. Single-Window Deployment Command Center (`src/features/deployment`)
+* **Dedicated Single-Window Route Architecture (`DeploymentPage.tsx`)**:
+  - Accessible via `/deployment/:deploymentId` or `/deployment` with automated fallback to the active deployment record.
+  - **Zero Page-Level Scrolling**: Strict full-viewport flexbox height containment (`h-screen max-h-screen overflow-hidden flex flex-col`), completely eradicating outer browser scrollbars for an ultra-focused desktop experience.
+  - **Dynamic Layout Mode Switcher**:
+    - **Split View**: 60/40 grid layout balancing the live interactive container preview frame and the unified console inspector.
+    - **Preview Focus**: Maximizes the interactive preview frame across 100% of the viewport width.
+    - **Inspector Focus**: Expands the tabbed observability console across the entire viewport.
+* **Persistent Navigation Header (`DeploymentHeader.tsx`)**:
+  - Compact `h-13` navigation bar with interactive breadcrumb hierarchy (`DeployForge / <Repo> / <ShortId>`).
+  - Pulsing live status beacon (`Ready • Preview`).
+  - **Keyboard Accelerators**: Built-in hotkeys: press `C` to copy the preview URL, press `V` to immediately visit the application in a new browser tab.
+  - High-contrast Electric Cyan Visit CTA (`#00F0FF`) with subtle spring hover states and an instant Share modal trigger.
+* **High-Density Single-Row Summary Bar (`DeploymentSummaryBar.tsx`)**:
+  - Compact toolbar (`h-11`) displaying live pod status (`2/2 Ready`), external ingress domain with one-click copy and open links, active repository, and workspace layout switcher.
+* **Multi-Device Responsive Preview Frame (`DeploymentPreviewFrame.tsx`)**:
+  - Hardware-accelerated browser sandbox with realistic chrome navigation bar, SSL security lock icon, and refresh trigger.
+  - **Device Viewport Switcher**: Instantly preview applications in **Desktop** (100%), **Tablet** (768px iPad), or **Mobile** (390px iPhone) frames.
+  - Telemetry footer displaying real-time HTTP status (`200 OK • HTTP/1.1 Ingress Proxy`) and target container port.
+  - Fullscreen mode trigger with clean `fixed inset-0` modal viewport.
+* **Unified Console Inspector (`DeploymentInspector.tsx`)**:
+  - Segmented tab navigation with Framer Motion spring indicator:
+    - **Infrastructure Tab (`DeploymentInfrastructure.tsx`)**: Cluster ingress routing specifications, port mapping (`80:TCP -> 3000:TCP`), pod workload metadata (`default` namespace, `docker-desktop` node), and container breakdowns (`app` and `supervisor` agent).
+    - **Runtime Logs Tab (`DeploymentLogs.tsx`)**: Real-time stdout/stderr log stream viewer with search query highlighting, level filters (`all`, `info`, `build`, `warn`, `error`), autoscroll toggle, full-text clipboard copy, and text file export.
+    - **Health & Probes Tab (`DeploymentHealth.tsx`)**: Live diagnostic probe runner (`Check Probes`) testing DNS resolution, TCP socket handshake, and HTTP GET / TTFB latency. Features responsive 2×2 telemetry cards with custom SVG sparkline graphs (CPU allocation, memory footprint, p99 latency, pod reliability) and connected chronological lifecycle events timeline.
+* **Share Modal (`DeploymentShareModal.tsx`)**:
+  - Instant deployment sharing dialog with dynamic QR code generation, direct URL copy, and social sharing links.
+* **Global State & API Integration (`deployment.slice.ts`, `deployment.api.ts`)**:
+  - Redux Toolkit integration storing `currentDeployment` and deployment `history` with localStorage persistence.
+  - Guarded synchronization (`syncedRef`) preventing infinite re-render dispatch loops during router transitions.
+  - Real-time polling via `/api/k8s/get-logs?podname=<containerId>` with resilient fallbacks.
 
 ---
 

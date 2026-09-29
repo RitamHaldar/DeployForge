@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { HomePage } from "../features/home";
 import { AuthPage } from "../features/auth";
 import { ReposPage } from "../features/github";
+import { DeploymentPage } from "../features/deployment";
 
 export const routes = createBrowserRouter([
   {
@@ -11,6 +12,14 @@ export const routes = createBrowserRouter([
   {
     path: "/repos",
     element: <ReposPage />,
+  },
+  {
+    path: "/deployment",
+    element: <DeploymentPage />,
+  },
+  {
+    path: "/deployment/:deploymentId",
+    element: <DeploymentPage />,
   },
   {
     path: "/repositories",
