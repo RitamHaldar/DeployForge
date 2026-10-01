@@ -45,7 +45,9 @@ DeployForge/
 │   ├── src/app.ts            # Host header routing (*.preview.localhost & *.agent.localhost) & proxy cache
 │   └── server.ts             # Express server entrypoint (port 3000)
 ├── agent/                    # In-Pod Sidecar Developer Agent Microservice (Port 4000)
-│   ├── src/app.ts            # Express 5 app with recursive workspace file inspection & health probes
+│   ├── src/config/           # Centralized environment config (NVIDIA & Mistral API keys)
+│   ├── src/utils/            # LangChain debugging agent (Codestral/NVIDIA) & workspace tools
+│   ├── src/app.ts            # Express 5 app with listFiles, readfile, updateFile & health probes
 │   ├── server.ts             # Server entrypoint (listens on port 4000)
 │   └── Dockerfile            # Container image definition for in-pod deployment
 ├── k8s/                      # Production & Staging Kubernetes Manifests & Cluster Guide (README.md)
@@ -130,14 +132,20 @@ DeployForge/
   - Probes at `/api/router/health` and `/api/router/ready`.
 
 ### 🤖 In-Pod Agent Sidecar (`/agent`)
-- **Framework**: Express 5, TypeScript, `tsx`, Morgan.
+- **Framework**: Express 5, TypeScript, LangChain, `@langchain/mistralai`, `@langchain/openai`, `tsx`, Morgan.
 - **Role & Execution**:
   - Runs inside the deployed sandbox pod as a co-located sidecar container on port **4000**.
   - Mounts the shared `workspace-volume` at `/workspace` populated by the pod's init container.
+- **Autonomous AI Debugging Engine**:
+  - Houses an autonomous debugging agent powered by LangChain (`codestral-latest` / `openai/gpt-oss-20b`).
+  - Governed by a root-cause analysis protocol: diagnoses build/runtime errors and implements surgical, minimal repairs.
+  - Equips dedicated LangChain tools: `fileListTool`, `readfileTool`, and `updateFileTool`.
 - **Endpoints**:
   - `GET /api/agent/health`: Liveness probe (`"Ai agent Running Healthy"`).
   - `GET /api/agent/ready`: Readiness probe (`"Ai agent Ready"`).
-  - `GET /api/agent/listFiles`: Recursively scans and returns the full directory tree of `/workspace` in JSON, automatically ignoring noise directories (`node_modules`, `.git`, `.vscode`, `dist`).
+  - `GET /api/agent/listFiles`: Recursively scans and returns the workspace directory tree in JSON, excluding noise directories (`node_modules`, `dist`, `.next`, `.git`, etc.).
+  - `POST /api/agent/readfile`: Reads specified comma-separated workspace files.
+  - `PATCH /api/agent/updateFile`: Applies atomic file updates and creates directories inside `/workspace`.
 
 ---
 

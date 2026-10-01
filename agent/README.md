@@ -79,7 +79,7 @@ Inside the deployed Kubernetes Pod, the `agent` acts as a sidecar:
 ### 3. List Workspace Files
 - **Route**: `GET /api/agent/listFiles`
 - **Description**: Recursively traverses `/workspace` and returns all relative file paths and directories in JSON.
-- **Ignored Directories**: `node_modules`, `.git`, `.vscode`, `dist`
+- **Ignored Directories**: `node_modules`, `dist`, `build`, `out`, `.next`, `.nuxt`, `.output`, `.venv`, `venv`, `.git`, `.vscode`, `.idea`, `coverage`, `tmp`, `logs`, etc.
 - **Success Response (`200 OK`)**:
   ```json
   {
@@ -108,6 +108,91 @@ Inside the deployed Kubernetes Pod, the `agent` acts as a sidecar:
   }
   ```
 
+### 4. Read Workspace Files
+- **Route**: `POST /api/agent/readfile`
+- **Description**: Reads the contents of one or more workspace files specified as a comma-separated string.
+- **Request Body**:
+  ```json
+  {
+    "files": "package.json, src/App.tsx"
+  }
+  ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "Files read successfully",
+    "status": "success",
+    "data": [
+      {
+        "package.json": "{\n  \"name\": \"my-app\",\n  \"version\": \"1.0.0\"...\n}"
+      },
+      {
+        "src/App.tsx": "import React from 'react';\nexport default function App() { ... }"
+      }
+    ]
+  }
+  ```
+- **Error Response (`400 Bad Request`)**:
+  ```json
+  {
+    "message": "Filename is required and must be a comma-separated string",
+    "status": "error",
+    "data": null
+  }
+  ```
+
+### 5. Update Workspace Files
+- **Route**: `PATCH /api/agent/updateFile`
+- **Description**: Atomically applies code edits or creates new files inside the workspace directory, automatically ensuring parent directories exist (`fs.mkdir(..., { recursive: true })`).
+- **Request Body**:
+  ```json
+  {
+    "updates": [
+      {
+        "file": "src/App.tsx",
+        "content": "export default function App() { return <h1>Fixed!</h1>; }"
+      }
+    ]
+  }
+  ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "Files updated successfully",
+    "status": "success",
+    "data": [
+      {
+        "/workspace/src/App.tsx": "File updated successfully"
+      }
+    ]
+  }
+  ```
+- **Error Response (`400 Bad Request`)**:
+  ```json
+  {
+    "message": "Updates is required and must be an array",
+    "status": "error",
+    "data": null
+  }
+  ```
+
+---
+
+## 🧠 Autonomous AI Debugging Agent
+
+The sidecar houses an autonomous debugging agent built on **LangChain**:
+
+- **Model Hierarchy**: Prioritizes Mistral AI (`codestral-latest`) for code reasoning, with seamless fallback to NVIDIA NIM (`openai/gpt-oss-20b`).
+- **Agent Protocol**: Governed by strict operational directives:
+  1. **Read & Diagnose**: Inspect the complete error trace, failing command, and missing modules before touching any code.
+  2. **Structure First**: Always call `fileListTool` first to map actual file paths. Never guess filenames.
+  3. **Inspect Relevant Files**: Inspect `package.json`, lockfiles, configs, and source files via `readfileTool`.
+  4. **Minimal Targeted Fix**: Apply the smallest surgical edit using `updateFileTool`. Never rewrite whole files, downgrade dependencies unnecessarily, or inject temporary hacks.
+- **Sidecar Agent Tools (`src/utils/tools.ts`)**:
+  - `fileListTool`: Queries `/api/agent/listFiles` on the target agent URL.
+  - `readfileTool`: Queries `/api/agent/readfile` on the target agent URL.
+  - `updateFileTool`: Dispatches file changes to `/api/agent/updateFile`.
+
 ---
 
 ## 📂 Project Structure
@@ -115,14 +200,34 @@ Inside the deployed Kubernetes Pod, the `agent` acts as a sidecar:
 ```text
 agent/
 ├── src/
-│   └── app.ts           # Express application, routes, and recursive listFiles logic
-├── Dockerfile           # Node 25 Alpine container image for in-pod deployment
-├── package.json         # Dependencies, tsx runtime, and scripts
-├── server.ts            # Entrypoint binding to port 4000
-├── tsconfig.json        # Strict TypeScript NodeNext compiler configuration
-├── .dockerignore        # Build exclusion rules
-└── README.md            # Service documentation
+│   ├── app.ts                  # Express application, routes, listFiles, readfile, and updateFile
+│   ├── config/
+│   │   └── config.ts           # Centralized environment config (NVIDIA & Mistral API keys)
+│   ├── controllers/
+│   │   └── agent.controller.ts # Agent execution controller
+│   └── utils/
+│       ├── agent.ts            # LangChain debugging agent & system prompt definition
+│       └── tools.ts            # LangChain tools (fileListTool, readfileTool, updateFileTool)
+├── Dockerfile                  # Node 25 Alpine container image for in-pod deployment
+├── package.json                # Dependencies, LangChain SDKs, tsx runtime, and scripts
+├── server.ts                   # Entrypoint binding to port 4000
+├── tsconfig.json               # Strict TypeScript NodeNext compiler configuration
+├── .dockerignore               # Build exclusion rules
+└── README.md                   # Service documentation
 ```
+
+---
+
+## ⚙️ Environment Variables
+
+Create a `.env` file in the root of the `agent` directory (also populated via Kubernetes secrets in pod deployments):
+
+| Variable | Type | Description |
+| :--- | :--- | :--- |
+| `PORT` | `number` | Port on which the agent listens (defaults to `4000`) |
+| `WORKSPACE_DIR` | `string` | Shared workspace directory path (defaults to `/workspace`) |
+| `MISTRAL_API_KEY` | `string` | Mistral AI API key (uses `codestral-latest` for debugging) |
+| `NVIDIA_API_KEY` | `string` | NVIDIA NIM API key (fallback model `openai/gpt-oss-20b`) |
 
 ---
 
@@ -164,3 +269,4 @@ docker build -t agent:latest .
 - **`router`**: Inspects the incoming host header for `.agent.` and proxies to `http://deployforge-service-<sandboxId>:4000`.
 - **`k8s/ingress.yml`**: Exposes `*.agent.localhost` through the cluster NGINX Ingress controller.
 - **`skaffold.yml`**: Continuously builds and synchronizes the `agent` image during local cluster development.
+

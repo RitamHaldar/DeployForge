@@ -30,7 +30,7 @@ The **DeployForge Heal Service** is the deployment orchestration, container virt
   - Deploys namespaced application pods with CPU and memory resource quotas.
 - **Docker Sandboxed Build & Deployment**:
   - Clones user Git repositories on-demand using `simple-git` with token authentication.
-  - Automatic `Dockerfile` synthesis (defaults to Node.js 20 Alpine) if the repo lacks one.
+  - Automatic `Dockerfile` synthesis (defaults to modern Node.js 22 Alpine) if the repo lacks one.
   - Streams repository source as tarball archives directly into the Docker Engine daemon.
   - Runs isolated sandbox containers with CPU caps (1 core), memory limits (512MB), and dynamic host port assignment.
 - **GitHub Repository Synchronization**:
@@ -276,9 +276,10 @@ The deployment controller handles end-to-end repository cloning, subfolder resol
      - **Build Script Safety Guard**: Verifies whether `"build"` exists in `package.json.scripts`. If no build script is defined, it prevents adding `RUN npm run build` (eliminating `npm error Missing script: build` failures).
      - **Dependency Protection**: Guarantees `NODE_ENV=production` and `--omit=dev` are never applied prior to `npm run build`, ensuring devDependencies (e.g. `vite`, `tsc`, `tailwindcss`) are available for compilation.
      - Detects framework architecture:
-       - **React / Vite / Vue / Angular SPA**: Generates a multi-stage build, serving the compiled static bundle (`dist`/`build`) via `serve -s dist -l 3000`.
-       - **Next.js (SSR / Fullstack)**: Sets `ENV NEXT_TELEMETRY_DISABLED=1`, compiles with `npm run build`, binds to `0.0.0.0:3000`, and copies `.next` into the runner.
-       - **Node.js / Express**: Single-stage lightweight container, running the detected start script or entrypoint on the detected port.
+       - **React / Vite / Vue / Angular SPA**: Uses `FROM node:22-alpine`, installs build dependencies with `npm install --include=dev`, compiles the static bundle (`dist`/`build`), and serves production assets via `serve -s dist -l 3000`.
+       - **Next.js (SSR / Fullstack)**: Uses `FROM node:22-alpine`, ensures devDependencies with `npm install --include=dev`, verifies PostCSS/Tailwind dependencies (`npm ls @tailwindcss/postcss tailwindcss`), sets `ENV NEXT_TELEMETRY_DISABLED=1` and `ENV HOSTNAME=0.0.0.0`, compiles with `npm run build`, and starts with `npm start` on port 3000.
+       - **Plain Node.js / Express**: Single-stage lightweight `node:22-alpine` container, running the detected start script or entrypoint on the detected port.
+       - **TypeScript Node.js Backend**: Multi-stage build with `node:22-alpine` builder and runner stages.
        - **Python (FastAPI / Flask / Django)**: Installs `requirements.txt` and runs with `uvicorn` / `gunicorn` binding to `0.0.0.0:8000`.
   5. **Docker Build with Real-time Diagnostics**:
      - Streams repository tarball via `tar-fs.pack()` into the local Docker daemon.

@@ -43,45 +43,54 @@ Rules:
 3. Framework-specific templates:
    - React / Vite / Vue / Angular SPA (Frontend client-side only, no server.js/app.js):
      Multi-stage build example:
-     FROM node:20-alpine AS builder
+     FROM node:22-alpine
+
      WORKDIR /app
+
+     ENV NODE_ENV=production
+
      COPY package*.json ./
-     RUN npm install
+     RUN npm install --include=dev
+
      COPY . .
      RUN npm run build
 
-     FROM node:20-alpine AS runner
-     WORKDIR /app
-     RUN npm install -g serve
-     COPY --from=builder /app/dist ./dist
      EXPOSE 3000
+
+     RUN npm install -g serve
+
      CMD ["serve", "-s", "dist", "-l", "3000"]
      (Note: Check if build output is "dist" or "build" and adjust COPY --from=builder path accordingly).
 
    - Next.js (Fullstack / SSR):
-     FROM node:20-alpine AS builder
+     FROM node:22-alpine
+
      WORKDIR /app
+
      ENV NEXT_TELEMETRY_DISABLED=1
+     ENV HOSTNAME=0.0.0.0
+     ENV PORT=3000
+
      COPY package*.json ./
-     RUN npm install
+
+     # Ensure devDependencies are installed for the Next.js build
+     RUN npm install --include=dev
+
+     # Verify Tailwind/PostCSS is available
+     RUN npm ls @tailwindcss/postcss tailwindcss
+
      COPY . .
+
+     ENV NODE_ENV=production
+
      RUN npm run build
 
-     FROM node:20-alpine AS runner
-     WORKDIR /app
-     ENV NODE_ENV=production
-     ENV NEXT_TELEMETRY_DISABLED=1
-     ENV HOSTNAME="0.0.0.0"
-     ENV PORT=3000
-     COPY package*.json ./
-     RUN npm install --omit=dev
-     COPY --from=builder /app/.next ./.next
-     COPY --from=builder /app/public ./public
      EXPOSE 3000
+
      CMD ["npm", "start"]
 
    - Plain Node.js / Express Backend (Without build script, e.g. server.js or index.js):
-     FROM node:20-alpine
+     FROM node:22-alpine
      WORKDIR /app
      COPY package*.json ./
      RUN npm install
@@ -91,14 +100,14 @@ Rules:
      (If no "start" script in package.json, use CMD ["node", "<entrypoint>.js"]).
 
    - TypeScript Node.js Backend (With "build": "tsc" or similar in scripts):
-     FROM node:20-alpine AS builder
+     FROM node:22-alpine AS builder
      WORKDIR /app
      COPY package*.json ./
      RUN npm install
      COPY . .
      RUN npm run build
 
-     FROM node:20-alpine AS runner
+     FROM node:22-alpine AS runner
      WORKDIR /app
      ENV NODE_ENV=production
      COPY package*.json ./
