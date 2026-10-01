@@ -1,9 +1,16 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: frameforge-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "8000"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "8000"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "8000"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-path: "/"
+  name: deployforge-ingress
   labels:
-    app.kubernetes.io/name: frameforge-ingress
+    app.kubernetes.io/name: deployforge-ingress
 spec:
   ingressClassName: nginx
   rules:
