@@ -26,3 +26,41 @@ export async function fetchClusterNodes() {
     return null;
   }
 }
+
+export async function runAgentAutoFix(params: {
+  agentUrl?: string;
+  podName?: string;
+  customPrompt?: string;
+  errorLog?: string;
+}) {
+  try {
+    const base = params.agentUrl ? params.agentUrl.replace(/\/$/, '') : '';
+    const endpoint = base ? `${base}/api/agent/fix-error` : '/api/agent/fix-error';
+
+    const res = await axios.post(
+      endpoint,
+      {
+        podname: params.podName,
+        prompt: params.customPrompt,
+        errorLog: params.errorLog,
+        url: params.agentUrl,
+      },
+      {
+        timeout: 90000,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return res.data;
+  } catch (err: any) {
+    const msg =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      err.message ||
+      'Failed to connect to AI debugging agent';
+    throw new Error(msg);
+  }
+}
+

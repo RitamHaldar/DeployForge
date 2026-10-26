@@ -6,11 +6,13 @@ import {
   Activity,
   Maximize2,
   Minimize2,
+  Sparkles,
 } from 'lucide-react';
 import type { DeploymentRecord, InspectorTab } from '../types';
 import { DeploymentInfrastructure } from './DeploymentInfrastructure';
 import { DeploymentLogs } from './DeploymentLogs';
 import { DeploymentHealth } from './DeploymentHealth';
+import { DeploymentAgent } from './DeploymentAgent';
 
 interface DeploymentInspectorProps {
   deployment: DeploymentRecord;
@@ -23,13 +25,14 @@ export function DeploymentInspector({
   deployment,
   isExpanded = false,
   onToggleExpand,
-  defaultTab = 'infrastructure',
+  defaultTab = 'agent',
 }: DeploymentInspectorProps) {
   const [activeTab, setActiveTab] = useState<InspectorTab>(defaultTab);
 
   const tabs: { id: InspectorTab; label: string; icon: typeof Server }[] = [
-    { id: 'infrastructure', label: 'Infrastructure', icon: Server },
+    { id: 'agent', label: 'AI Auto-Fix', icon: Sparkles },
     { id: 'logs', label: 'Runtime Logs', icon: Terminal },
+    { id: 'infrastructure', label: 'Infrastructure', icon: Server },
     { id: 'health', label: 'Health & Probes', icon: Activity },
   ];
 
@@ -92,6 +95,23 @@ export function DeploymentInspector({
       {/* Tab Viewport */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
+          {activeTab === 'agent' && (
+            <motion.div
+              key="agent"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-4 space-y-3"
+            >
+              <DeploymentAgent
+                deployment={deployment}
+                onViewLogs={() => setActiveTab('logs')}
+                onViewHealth={() => setActiveTab('health')}
+              />
+            </motion.div>
+          )}
+
           {activeTab === 'infrastructure' && (
             <motion.div
               key="infrastructure"
@@ -118,7 +138,10 @@ export function DeploymentInspector({
               transition={{ duration: 0.15 }}
               className="flex-1 min-h-0 flex flex-col overflow-hidden"
             >
-              <DeploymentLogs deployment={deployment} />
+              <DeploymentLogs
+                deployment={deployment}
+                onAutoFixError={() => setActiveTab('agent')}
+              />
             </motion.div>
           )}
 

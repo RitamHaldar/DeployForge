@@ -176,6 +176,39 @@ Inside the deployed Kubernetes Pod, the `agent` acts as a sidecar:
   }
   ```
 
+### 6. Autonomous AI Fix & Diagnostic Trigger
+- **Route**: `POST /api/agent/fix-error`
+- **Description**: Triggers the LangChain debugging agent to inspect pod runtime logs, locate stack traces, analyze workspace files, apply surgical code updates, or report clean system health.
+- **Request Body**:
+  ```json
+  {
+    "podname": "deployforge-pod-abcdef123456",
+    "prompt": "Fix start command failure or missing exports",
+    "errorLog": "Error: Cannot find module 'express'",
+    "url": "http://abcdef123456.agent.localhost"
+  }
+  ```
+- **Clean Health Response (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "fixed": false,
+    "message": "No error found. System is healthy.",
+    "details": "no error",
+    "podname": "deployforge-pod-abcdef123456"
+  }
+  ```
+- **Fix Applied Response (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "fixed": true,
+    "message": "Error found and resolved",
+    "result": "Root cause: Missing import in server.ts.\nFiles modified: src/server.ts\nResolution: Added Express import and restored port binding.",
+    "podname": "deployforge-pod-abcdef123456"
+  }
+  ```
+
 ---
 
 ## 🧠 Autonomous AI Debugging Agent
@@ -185,13 +218,15 @@ The sidecar houses an autonomous debugging agent built on **LangChain**:
 - **Model Hierarchy**: Prioritizes Mistral AI (`codestral-latest`) for code reasoning, with seamless fallback to NVIDIA NIM (`openai/gpt-oss-20b`).
 - **Agent Protocol**: Governed by strict operational directives:
   1. **Read & Diagnose**: Inspect the complete error trace, failing command, and missing modules before touching any code.
-  2. **Structure First**: Always call `fileListTool` first to map actual file paths. Never guess filenames.
-  3. **Inspect Relevant Files**: Inspect `package.json`, lockfiles, configs, and source files via `readfileTool`.
+  2. **Cluster & Logs First**: Use `getLogsTool` and `getNodesTool` to retrieve actual container logs from `healservice`.
+  3. **Structure & Inspect**: Always call `fileListTool` to map paths, then inspect `package.json`, lockfiles, configs, and source files via `readFileTool`.
   4. **Minimal Targeted Fix**: Apply the smallest surgical edit using `updateFileTool`. Never rewrite whole files, downgrade dependencies unnecessarily, or inject temporary hacks.
 - **Sidecar Agent Tools (`src/utils/tools.ts`)**:
-  - `fileListTool`: Queries `/api/agent/listFiles` on the target agent URL.
-  - `readfileTool`: Queries `/api/agent/readfile` on the target agent URL.
-  - `updateFileTool`: Dispatches file changes to `/api/agent/updateFile`.
+  - `getNodesTool`: Discovers pods and cluster nodes from `/api/k8s/nodes`.
+  - `getLogsTool`: Retrieves live runtime pod logs and stack traces from `/api/k8s/get-logs`.
+  - `fileListTool`: Queries `/api/agent/listFiles` on the workspace directory.
+  - `readFileTool`: Reads one or more comma-separated workspace files via `POST /api/agent/readfile`.
+  - `updateFileTool`: Dispatches verified file modifications to `PATCH /api/agent/updateFile`.
 
 ---
 
@@ -200,14 +235,16 @@ The sidecar houses an autonomous debugging agent built on **LangChain**:
 ```text
 agent/
 ├── src/
-│   ├── app.ts                  # Express application, routes, listFiles, readfile, and updateFile
+│   ├── app.ts                  # Express app, CORS middleware, listFiles, readfile, updateFile & health probes
 │   ├── config/
 │   │   └── config.ts           # Centralized environment config (NVIDIA & Mistral API keys)
 │   ├── controllers/
-│   │   └── agent.controller.ts # Agent execution controller
+│   │   └── agent.controller.ts # FixerrorInCode controller with pod context & message parsing
+│   ├── routes/
+│   │   └── agent.route.ts      # Agent router mounting POST /api/agent/fix-error
 │   └── utils/
 │       ├── agent.ts            # LangChain debugging agent & system prompt definition
-│       └── tools.ts            # LangChain tools (fileListTool, readfileTool, updateFileTool)
+│       └── tools.ts            # LangChain tools (fileListTool, readFileTool, updateFileTool, getNodesTool, getLogsTool)
 ├── Dockerfile                  # Node 25 Alpine container image for in-pod deployment
 ├── package.json                # Dependencies, LangChain SDKs, tsx runtime, and scripts
 ├── server.ts                   # Entrypoint binding to port 4000

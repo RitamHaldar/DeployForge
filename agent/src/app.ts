@@ -2,10 +2,21 @@ import express, { Request, Response } from "express"
 import morgan from "morgan"
 import fs from "node:fs/promises"
 import path from "node:path"
+import agentrouter from "./routes/agent.route.js"
+
 const app = express();
 
 app.use(morgan("combined"));
 app.use(express.json());
+app.use((req: Request, res: Response, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    if (req.method === "OPTIONS") {
+        return res.sendStatus(200);
+    }
+    next();
+});
 const WORKSPACE_DIR = "/workspace";
 app.get("/api/agent/health", (_req: Request, res: Response) => {
     res.status(200).json({
@@ -183,4 +194,5 @@ app.patch("/api/agent/updateFile", async (req: Request, res: Response) => {
     });
 });
 
+app.use("/api/agent", agentrouter);
 export default app;

@@ -1,10 +1,21 @@
-export type DeploymentTab = 'preview' | 'infrastructure' | 'logs' | 'health';
+export type DeploymentTab = 'preview' | 'infrastructure' | 'logs' | 'health' | 'agent';
 
 export type DeviceMode = 'desktop' | 'tablet' | 'mobile';
 
 export type ViewLayout = 'split' | 'preview-focus' | 'console-focus';
 
-export type InspectorTab = 'infrastructure' | 'logs' | 'health';
+export type InspectorTab = 'infrastructure' | 'logs' | 'health' | 'agent';
+
+export interface AgentFixResult {
+  success: boolean;
+  fixed?: boolean;
+  message: string;
+  result?: string;
+  details?: string;
+  error?: string;
+  timestamp?: string;
+  podname?: string;
+}
 
 export interface DeploymentRecord {
   id: string;

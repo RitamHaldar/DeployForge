@@ -82,8 +82,9 @@ DeployForge/
     - **Layout Modes**: Instant switching between **Split View** (60/40 preview and console), **Preview Focus** (100% full-width iframe), and **Inspector Focus** (100% full-width console).
     - **Multi-Device Responsive Preview Frame**: Simulated browser chrome with Desktop, Tablet (768px iPad), and Mobile (390px iPhone) viewports, reload controls, and live telemetry readout (`200 OK • HTTP/1.1 Ingress Proxy`).
     - **Unified Console Inspector**: Tabbed observability suite containing:
+      - *AI Auto-Fix*: In-pod autonomous debugging agent console (`DeploymentAgent.tsx`) that reads pod crash logs, inspects workspace files, reasons about the root cause, and applies minimal patches in real time.
       - *Infrastructure*: Pod specifications, namespace, node, container instances, port mappings (80 -> 3000).
-      - *Runtime Logs*: Real-time container stdout/stderr log streaming with search query filtering, severity levels (`all`, `info`, `build`, `warn`, `error`), autoscroll, and export.
+      - *Runtime Logs*: Real-time container stdout/stderr log streaming with search query filtering, severity levels (`all`, `info`, `build`, `warn`, `error`), autoscroll, export, and a 1-click **"AI Auto-Fix"** remediation trigger.
       - *Health & Probes*: Interactive multi-stage probe runner (`Check Probes`), timing waterfall (DNS, TCP, TTFB), 2×2 telemetry cards with live SVG sparkline wave graphs (CPU, Memory, Latency, Reliability), K8s probe specs, and connected lifecycle events timeline.
     - **Productivity Accelerators**: Keyboard shortcuts (`C` to copy preview URL, `V` to immediately visit), instant Share modal with QR code generation.
 - **Seamless Authentication & Navigation**:
@@ -116,7 +117,7 @@ DeployForge/
     - **Multi-Container Pod**:
       - **Init Container**: Seeds code from the built image into a shared `workspace-volume` (`emptyDir`).
       - **App Container**: Runs the user application with `containerPort` dynamically matching the application port.
-      - **Agent Sidecar**: Deploys the `agent` container sharing `/workspace` on port 4000.
+      - **Agent Sidecar**: Deploys the `agent` container sharing `/workspace` on port 4000, injected with `envFrom: [{ secretRef: { name: "ai" } }]` for AI keys.
     - **Dual Endpoint Return**: Returns both `previewurl` (`http://<id>.preview.localhost`) and `agenturl` (`http://<id>.agent.localhost`).
   - `GET /api/k8s/health`: Health probe endpoint for Kubernetes liveness/readiness probes.
   - **Kubernetes Controller**: Queries application pods across namespaces, manages lifecycle, and tails real-time logs.
@@ -136,16 +137,18 @@ DeployForge/
 - **Role & Execution**:
   - Runs inside the deployed sandbox pod as a co-located sidecar container on port **4000**.
   - Mounts the shared `workspace-volume` at `/workspace` populated by the pod's init container.
+  - Configured with CORS support for seamless browser requests from the frontend developer console.
 - **Autonomous AI Debugging Engine**:
   - Houses an autonomous debugging agent powered by LangChain (`codestral-latest` / `openai/gpt-oss-20b`).
   - Governed by a root-cause analysis protocol: diagnoses build/runtime errors and implements surgical, minimal repairs.
-  - Equips dedicated LangChain tools: `fileListTool`, `readfileTool`, and `updateFileTool`.
+  - Equips dedicated LangChain tools: `getNodesTool`, `getLogsTool`, `fileListTool`, `readFileTool`, and `updateFileTool`.
 - **Endpoints**:
   - `GET /api/agent/health`: Liveness probe (`"Ai agent Running Healthy"`).
   - `GET /api/agent/ready`: Readiness probe (`"Ai agent Ready"`).
   - `GET /api/agent/listFiles`: Recursively scans and returns the workspace directory tree in JSON, excluding noise directories (`node_modules`, `dist`, `.next`, `.git`, etc.).
   - `POST /api/agent/readfile`: Reads specified comma-separated workspace files.
   - `PATCH /api/agent/updateFile`: Applies atomic file updates and creates directories inside `/workspace`.
+  - `POST /api/agent/fix-error`: Invokes the agent with pod context and logs to diagnose and resolve errors automatically.
 
 ---
 

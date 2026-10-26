@@ -1,2 +1,4 @@
 .agents
 *.json
+.env
+.env.*

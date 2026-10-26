@@ -10,9 +10,9 @@ export async function createPod(id: string, imageName: string, containerPort: nu
             }
         },
         "spec": {
-            "volumes":[
+            "volumes": [
                 {
-                    "name":"workspace-volume",
+                    "name": "workspace-volume",
                     "emptyDir": {}
                 }
             ],
@@ -53,25 +53,32 @@ export async function createPod(id: string, imageName: string, containerPort: nu
                         }
                     ],
 
-                },{
-                    "name":"agent",
-                    "image":"agent:latest",
-                    "imagePullPolicy":"IfNotPresent",
+                }, {
+                    "name": "agent",
+                    "image": "agent:latest",
+                    "imagePullPolicy": "IfNotPresent",
                     "ports": [{ "containerPort": 4000 }],
-                    "resources":{
-                        "limits":{
-                            "memory":"512Mi",
-                            "cpu":"500m"
+                    "envFrom": [
+                        {
+                            "secretRef": {
+                                "name": "ai"
+                            }
+                        }
+                    ],
+                    "resources": {
+                        "limits": {
+                            "memory": "512Mi",
+                            "cpu": "500m"
                         },
-                        "requests":{
-                            "memory":"256Mi",
-                            "cpu":"250m"
+                        "requests": {
+                            "memory": "256Mi",
+                            "cpu": "250m"
                         }
                     },
-                    "volumeMounts":[
+                    "volumeMounts": [
                         {
-                            "name":"workspace-volume",
-                            "mountPath":"/workspace"
+                            "name": "workspace-volume",
+                            "mountPath": "/workspace"
                         }
                     ]
                 }
@@ -119,19 +126,30 @@ export async function GetLogs(pod: string): Promise<object> {
             namespace: 'default',
             tailLines: 100
         });
+        const regex = /at .+?\s+\((.+?):(\d+):(\d+)\)/g;
+        const locations = [];
 
-        return { response };
+        let match;
+
+        while ((match = regex.exec(response)) !== null) {
+            locations.push({
+                file: match[1],
+                line: Number(match[2]),
+                column: Number(match[3]),
+            });
+        }
+        return locations;
     }
     catch (err) {
         return { msg: "error in getting logs", err: err }
     }
 }
 
-export async function DeletePod(id: string):Promise<object> {
+export async function DeletePod(id: string): Promise<object> {
     const res = await coreV1Api.deleteNamespacedPod({
         name: `deployforge-pod-${id}`,
         namespace: "default",
-        gracePeriodSeconds:0
+        gracePeriodSeconds: 0
     })
     return res;
 }

@@ -9,15 +9,17 @@ import {
   Pause,
   ArrowDown,
   Trash2,
+  Sparkles,
 } from 'lucide-react';
 import { fetchPodLogs } from '../services/deployment.api';
 import type { DeploymentRecord } from '../types';
 
 interface DeploymentLogsProps {
   deployment: DeploymentRecord;
+  onAutoFixError?: () => void;
 }
 
-export function DeploymentLogs({ deployment }: DeploymentLogsProps) {
+export function DeploymentLogs({ deployment, onAutoFixError }: DeploymentLogsProps) {
   const [logs, setLogs] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -240,6 +242,19 @@ export function DeploymentLogs({ deployment }: DeploymentLogsProps) {
           >
             <Download className="w-3.5 h-3.5" />
           </button>
+
+          {/* AI Auto-Fix Quick Trigger */}
+          {onAutoFixError && (
+            <button
+              type="button"
+              onClick={onAutoFixError}
+              className="px-2.5 py-1 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] flex items-center gap-1.5 font-sans font-medium transition-all cursor-pointer shadow-sm shadow-cyan-950/40 hover:border-cyan-400/50 ml-1"
+              title="Launch AI Auto-Fix agent"
+            >
+              <Sparkles className="w-3 h-3 text-cyan-400" />
+              <span>AI Auto-Fix</span>
+            </button>
+          )}
 
           {/* Clear Logs */}
           <button

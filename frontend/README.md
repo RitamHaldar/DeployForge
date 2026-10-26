@@ -158,8 +158,9 @@ DeployForge features an immersive, cybernetic developer aesthetic built on pure 
   - Fullscreen mode trigger with clean `fixed inset-0` modal viewport.
 * **Unified Console Inspector (`DeploymentInspector.tsx`)**:
   - Segmented tab navigation with Framer Motion spring indicator:
+    - **AI Auto-Fix Tab (`DeploymentAgent.tsx`)**: Dedicated autonomous debugging agent panel connecting directly to the in-pod sidecar (`:4000`). Triggers single-click diagnostic loops to parse runtime pod crashes, scan workspace source files with LangChain tools (`fileListTool`, `readFileTool`), generate precision patches, and atomically apply updates via `updateFileTool` with live 5-stage progress telemetry.
+    - **Runtime Logs Tab (`DeploymentLogs.tsx`)**: Real-time stdout/stderr log stream viewer with search query highlighting, level filters (`all`, `info`, `build`, `warn`, `error`), autoscroll toggle, full-text clipboard copy, text file export, and an integrated **"AI Auto-Fix"** trigger button jumping directly to remediation upon spotting stack traces.
     - **Infrastructure Tab (`DeploymentInfrastructure.tsx`)**: Cluster ingress routing specifications, port mapping (`80:TCP -> 3000:TCP`), pod workload metadata (`default` namespace, `docker-desktop` node), and container breakdowns (`app` and `supervisor` agent).
-    - **Runtime Logs Tab (`DeploymentLogs.tsx`)**: Real-time stdout/stderr log stream viewer with search query highlighting, level filters (`all`, `info`, `build`, `warn`, `error`), autoscroll toggle, full-text clipboard copy, and text file export.
     - **Health & Probes Tab (`DeploymentHealth.tsx`)**: Live diagnostic probe runner (`Check Probes`) testing DNS resolution, TCP socket handshake, and HTTP GET / TTFB latency. Features responsive 2×2 telemetry cards with custom SVG sparkline graphs (CPU allocation, memory footprint, p99 latency, pod reliability) and connected chronological lifecycle events timeline.
 * **Share Modal (`DeploymentShareModal.tsx`)**:
   - Instant deployment sharing dialog with dynamic QR code generation, direct URL copy, and social sharing links.
@@ -167,6 +168,7 @@ DeployForge features an immersive, cybernetic developer aesthetic built on pure 
   - Redux Toolkit integration storing `currentDeployment` and deployment `history` with localStorage persistence.
   - Guarded synchronization (`syncedRef`) preventing infinite re-render dispatch loops during router transitions.
   - Real-time polling via `/api/k8s/get-logs?podname=<containerId>` with resilient fallbacks.
+  - `runAgentAutoFix` API integration communicating with `${deployment.agenturl}/api/agent/fix-error`.
 
 ---
 
